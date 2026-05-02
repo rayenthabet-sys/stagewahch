@@ -7,9 +7,11 @@ Stage 1: Detection  — spatial query of EZZAYRA parcels inside drawn polygon
 Stage 2: Classification — 3-class model (extensif / intensif / hyper_intensif)
 """
 
-import json, logging, math, time, pickle
+import json, logging, math, time, pickle, requests
 from pathlib import Path
 from typing import List, Optional
+import numpy as np
+import cv2
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -114,6 +116,147 @@ def startup():
 
     # GEE: batch-fetch ALL spectral data in one call, persist to cache
     populate_cache_from_gee(_all_parcels)
+
+
+def _fetch_osm_parcels(bbox: tuple) -> List[dict]:
+    """Fetch 'orchard' polygons from OSM via Overpass API."""
+    import requests
+    from pipeline import area_ha_shoelace
+    south, west, north, east = bbox
+    query = f"""
+    [out:json];
+    way["landuse"="orchard"]({south},{west},{north},{east});
+    out geom;
+    """
+    try:
+        resp = requests.get(
+            "https://overpass.kumi.systems/api/interpreter", 
+            params={"data": query}, 
+            timeout=10
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        
+        parcels = []
+        for element in data.get("elements", []):
+            if element.get("type") == "way":
+                osm_id = element["id"]
+                coords = [{"lat": node["lat"], "lng": node["lon"]} for node in element.get("geometry", [])]
+                if len(coords) >= 3:
+                    area_ha = area_ha_shoelace(coords)
+                    parcels.append({
+                        "id": f"osm_{osm_id}",
+                        "coordinates": coords,
+                        "area_ha": area_ha,
+                        "systeme": None
+                    })
+        return parcels
+    except Exception as exc:
+        log.warning("OSM fetch failed: %s", exc)
+        return []
+
+
+def _run_unet_on_zone(zone_coords: List[dict]) -> List[dict]:
+    """Check overlap with cached tiles, run U-Net if overlapping."""
+    global _unet, _all_parcels
+    if _unet is None:
+        return []
+        
+    import numpy as np
+    import torch
+    
+    try:
+        import cv2
+    except ImportError:
+        return []
+        
+    from unet_model import _parcel_to_bbox, PATCH_SIZE, DEVICE
+    from pipeline import area_ha_shoelace
+    
+    z_lats = [c["lat"] for c in zone_coords]
+    z_lngs = [c["lng"] for c in zone_coords]
+    z_min_lat, z_max_lat = min(z_lats), max(z_lats)
+    z_min_lng, z_max_lng = min(z_lngs), max(z_lngs)
+    
+    parcels_detected = []
+    
+    for p in _all_parcels:
+        try:
+            min_lng, min_lat, max_lng, max_lat = _parcel_to_bbox(p["coordinates"])
+            
+            # Check for bounding box overlap
+            if (z_max_lat < min_lat or z_min_lat > max_lat or 
+                z_max_lng < min_lng or z_min_lng > max_lng):
+                continue
+                
+            tile_path = Path(__file__).parent / "data" / "tiles" / f"{p['id']}.npy"
+            if not tile_path.exists():
+                continue
+                
+            tile = np.load(tile_path)  # (H, W, C)
+            tile_t = torch.from_numpy(tile.transpose(2, 0, 1)).unsqueeze(0).to(DEVICE)
+            
+            with torch.no_grad():
+                logit = _unet(tile_t)[0, 0].cpu().numpy()
+                
+            prob_mask = 1 / (1 + np.exp(-logit))
+            binary = (prob_mask > 0.5).astype(np.uint8)
+            
+            contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            lng_range = max_lng - min_lng
+            lat_range = max_lat - min_lat
+            
+            for i, cnt in enumerate(contours):
+                if cv2.contourArea(cnt) < 50:
+                    continue
+                    
+                epsilon = 0.01 * cv2.arcLength(cnt, True)
+                approx = cv2.approxPolyDP(cnt, epsilon, True)
+                
+                coords = []
+                for pt in approx:
+                    px, py = int(pt[0][0]), int(pt[0][1])
+                    lng = min_lng + (px / (PATCH_SIZE - 1)) * lng_range
+                    lat = max_lat - (py / (PATCH_SIZE - 1)) * lat_range  # flip Y
+                    coords.append({"lat": round(lat, 6), "lng": round(lng, 6)})
+                    
+                if len(coords) >= 3:
+                    area_ha = area_ha_shoelace(coords)
+                    parcels_detected.append({
+                        "id": f"unet_{p['id']}_{i}",
+                        "coordinates": coords,
+                        "area_ha": area_ha,
+                        "systeme": None
+                    })
+        except Exception as exc:
+            log.warning("U-Net inference failed for tile %s: %s", p.get("id"), exc)
+            continue
+            
+    return parcels_detected
+
+
+def _merge_parcels(ezzayra: List[dict], osm: List[dict], unet: List[dict]) -> List[dict]:
+    """Merge sources, removing duplicates by centroid proximity > 0.001 deg."""
+    from pipeline import centroid
+    import math
+    merged = []
+    
+    for src_list in [ezzayra, osm, unet]:
+        for p in src_list:
+            c_lat, c_lng = centroid(p["coordinates"])
+            is_duplicate = False
+            for m in merged:
+                m_lat, m_lng = centroid(m["coordinates"])
+                dist = math.hypot(c_lat - m_lat, c_lng - m_lng)
+                if dist <= 0.001:
+                    is_duplicate = True
+                    break
+            
+            if not is_duplicate:
+                merged.append(p)
+                
+    return merged
 
 
 # ─── Schemas ────────────────────────────────────────────────────────────────
@@ -268,7 +411,17 @@ def cartographier(req: CartographierRequest):
     zone_area_ha = area_ha_shoelace(zone_coords)
     zone_area_km2 = round(zone_area_ha / 100, 1)
 
-    detected = detect_parcels_in_zone(zone_coords, _all_parcels)
+    ezzayra_detected = detect_parcels_in_zone(zone_coords, _all_parcels)
+    
+    # Compute bbox for OSM query
+    z_lats = [c["lat"] for c in zone_coords]
+    z_lngs = [c["lng"] for c in zone_coords]
+    bbox = (min(z_lats), min(z_lngs), max(z_lats), max(z_lngs))
+    
+    osm_detected = _fetch_osm_parcels(bbox)
+    unet_detected = _run_unet_on_zone(zone_coords)
+    
+    detected = _merge_parcels(ezzayra_detected, osm_detected, unet_detected)
 
     if not detected:
         return CartographierResponse(
@@ -291,6 +444,11 @@ def cartographier(req: CartographierRequest):
             "id":          p["id"],
             "coordinates": p["coordinates"],
             "area_ha":     p["area_ha"],
+            # Ground-truth label from EZZAYRA dataset → classify_parcel will
+            # use this directly and skip ML inference for these known parcels.
+            # Parcels detected by U-Net that are NOT in the dataset will not
+            # have this key and will go through the classifier normally.
+            "systeme":     p.get("systeme_label") or p.get("systeme"),
         }
         prediction = classify_parcel(_model, parcel_dict)
         lat, lng   = centroid(p["coordinates"])

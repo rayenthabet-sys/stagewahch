@@ -209,7 +209,8 @@ def prepare_dataset(project: str = None):
 
 # ─── 3. PyTorch Dataset ─────────────────────────────────────────────────────
 
-class OliveDataset(Dataset):
+_BaseDataset = Dataset if TORCH_AVAILABLE else object
+class OliveDataset(_BaseDataset):
     def __init__(self, augment: bool = False):
         self.tile_paths = sorted(TILE_DIR.glob("*.npy"))
         self.augment    = augment

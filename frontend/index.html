@@ -8,6 +8,11 @@
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap"
+    rel="stylesheet">
 
   <style>
     /* ── Reset & tokens ─────────────────────────────────────────── */
@@ -18,130 +23,149 @@
     }
 
     :root {
-      --green: #1D9E75;
-      --green-light: #E1F5EE;
-      --green-dark: #085041;
-      --amber: #EF9F27;
-      --amber-light: #FEF6E9;
-      --amber-dark: #7D4B00;
-      --red: #E24B4A;
-      --red-light: #FCEBEB;
-      --red-dark: #501313;
-      --gray: #888780;
-      --gray-light: #F1EFE8;
-      --bg: #F7F6F1;
-      --white: #FFFFFF;
-      --text: #2C2C2A;
-      --text-muted: #73726C;
-      --border: rgba(44, 44, 42, .13);
-      --radius: 10px;
-      --radius-sm: 6px;
-      --shadow: 0 2px 12px rgba(0, 0, 0, .10);
-      --panel-w: 380px;
+      --green: #108558;
+      --green-light: #f0fdf4;
+      --green-dark: #064e3b;
+      --amber: #d97706;
+      --amber-light: #fffbeb;
+      --amber-dark: #78350f;
+      --red: #dc2626;
+      --red-light: #fef2f2;
+      --red-dark: #7f1d1d;
+      --gray: #64748b;
+      --gray-light: #f8fafc;
+      --bg: #f1f5f9;
+      --white: #ffffff;
+      --text: #0f172a;
+      --text-muted: #475569;
+      --border: #e2e8f0;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.08);
+      --panel-w: 400px;
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg);
       color: var(--text);
       height: 100vh;
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      font-size: 14px
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
     }
 
     /* ── Header ─────────────────────────────────────────────────── */
     header {
       background: var(--white);
       border-bottom: 1px solid var(--border);
-      padding: .65rem 1.25rem;
+      padding: 0.8rem 1.5rem;
       display: flex;
       align-items: center;
-      gap: 1rem;
+      gap: 1.25rem;
       flex-shrink: 0;
       z-index: 1000;
-      box-shadow: 0 1px 6px rgba(0, 0, 0, .06)
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
     }
 
     .logo {
-      width: 32px;
-      height: 32px;
-      border-radius: 8px;
-      background: var(--green);
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      background: var(--white);
+      border: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: center;
-      color: #fff;
-      font-size: 18px;
-      flex-shrink: 0
+      flex-shrink: 0;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+      overflow: hidden;
+    }
+
+    .logo img {
+      width: 85%;
+      height: 85%;
+      object-fit: contain;
     }
 
     .header-title {
-      font-size: 15px;
-      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      font-size: 16px;
+      font-weight: 700;
+      letter-spacing: -0.01em;
       color: var(--text)
     }
 
     .header-sub {
       font-size: 11px;
       color: var(--text-muted);
-      margin-top: 1px
+      margin-top: 2px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      font-weight: 500;
     }
 
     .header-right {
       margin-left: auto;
       display: flex;
-      gap: .5rem;
+      gap: 0.75rem;
       align-items: center
     }
 
     .btn {
-      padding: .4rem .85rem;
+      padding: 0.5rem 1rem;
       border-radius: var(--radius-sm);
       border: 1px solid var(--border);
       background: var(--white);
       color: var(--text);
-      font-size: 12.5px;
+      font-size: 13px;
       cursor: pointer;
-      transition: background .15s, border-color .15s;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       font-family: inherit;
-      font-weight: 500
+      font-weight: 600;
     }
 
     .btn:hover {
       background: var(--gray-light);
-      border-color: rgba(44, 44, 42, .25)
+      border-color: #cbd5e1;
+      transform: translateY(-1px);
     }
 
     .btn-primary {
       background: var(--green);
       color: #fff;
-      border-color: var(--green)
+      border-color: var(--green);
+      box-shadow: 0 2px 4px rgba(16, 133, 88, 0.1);
     }
 
     .btn-primary:hover {
       background: var(--green-dark);
-      border-color: var(--green-dark)
+      border-color: var(--green-dark);
+      box-shadow: 0 4px 8px rgba(16, 133, 88, 0.2);
     }
 
     .btn-danger {
       background: var(--red);
       color: #fff;
-      border-color: var(--red)
+      border-color: var(--red);
     }
 
     .btn-danger:hover {
       background: var(--red-dark);
-      border-color: var(--red-dark)
+      border-color: var(--red-dark);
     }
 
     .badge {
       display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
+      padding: 2px 10px;
+      border-radius: 20px;
       font-size: 11px;
-      font-weight: 500
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
     }
 
     /* ── Main layout ─────────────────────────────────────────────── */
@@ -165,69 +189,78 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
-      z-index: 100
+      z-index: 100;
+      box-shadow: -4px 0 15px rgba(0, 0, 0, 0.02);
     }
 
     .panel-header {
-      padding: .9rem 1.1rem .7rem;
+      padding: 1.25rem 1.5rem;
       border-bottom: 1px solid var(--border);
-      flex-shrink: 0
+      flex-shrink: 0;
+      background: var(--gray-light);
     }
 
     .panel-title {
-      font-size: 13px;
-      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      font-weight: 700;
       color: var(--text)
     }
 
     .panel-sub {
-      font-size: 11.5px;
+      font-size: 12px;
       color: var(--text-muted);
-      margin-top: 2px
+      margin-top: 4px;
+      font-weight: 500;
     }
 
     .panel-body {
       flex: 1;
       overflow-y: auto;
-      padding: .75rem 1rem
+      padding: 1.25rem 1.5rem;
     }
 
     /* ── Instruction card ────────────────────────────────────────── */
     .instr-card {
-      border: 1px dashed rgba(29, 158, 117, .4);
+      border: 1px solid #cbd5e1;
       border-radius: var(--radius);
-      padding: .8rem 1rem;
-      background: rgba(29, 158, 117, .04);
-      font-size: 12.5px;
+      padding: 1.25rem;
+      background: var(--white);
+      font-size: 13px;
       color: var(--text-muted);
-      line-height: 1.6
+      line-height: 1.6;
+      box-shadow: var(--shadow);
     }
 
     .instr-card strong {
-      color: var(--green);
-      font-size: 12.5px
+      display: block;
+      color: var(--text);
+      font-size: 14px;
+      margin-bottom: 0.75rem;
+      font-family: 'Outfit', sans-serif;
     }
 
     .step-row {
       display: flex;
       align-items: flex-start;
-      gap: .5rem;
-      margin-top: .5rem
+      gap: 0.8rem;
+      margin-top: 0.75rem;
     }
 
     .step-num {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      background: var(--green);
-      color: #fff;
-      font-size: 10px;
+      width: 20px;
+      height: 20px;
+      border-radius: 6px;
+      background: var(--green-light);
+      color: var(--green);
+      font-size: 11px;
       font-weight: 700;
       display: flex;
       align-items: center;
       justify-content: center;
       flex-shrink: 0;
-      margin-top: 1px
+      margin-top: 2px;
+      border: 1px solid rgba(16, 133, 88, 0.1);
     }
 
     /* ── Data browser ────────────────────────────────────── */
@@ -263,10 +296,12 @@
     .result-card {
       border: 1px solid var(--border);
       border-radius: var(--radius);
-      padding: .7rem .9rem;
-      margin-bottom: .5rem;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
       cursor: pointer;
-      transition: border-color .15s, box-shadow .15s
+      background: var(--white);
+      transition: all 0.2s ease;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
     }
 
     .result-card:hover {
@@ -304,45 +339,42 @@
       gap: .25rem
     }
 
-    .conf-bar-wrap {
-      height: 3px;
-      background: var(--gray-light);
-      border-radius: 2px;
-      margin-top: .5rem;
-      overflow: hidden
-    }
-
-    .conf-bar {
-      height: 100%;
-      border-radius: 2px;
-      transition: width .4s
-    }
-
     /* ── Stats summary ────────────────────────────────────────────── */
     .stats-grid {
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: .4rem;
-      margin-bottom: .75rem
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.6rem;
+      margin-bottom: 1.25rem
     }
 
     .stat-box {
       background: var(--gray-light);
+      border: 1px solid var(--border);
       border-radius: var(--radius-sm);
-      padding: .5rem .4rem;
-      text-align: center
+      padding: 0.75rem 0.5rem;
+      text-align: center;
+      transition: transform 0.2s ease;
+    }
+
+    .stat-box:hover {
+      transform: translateY(-2px);
+      border-color: var(--green);
     }
 
     .stat-val {
-      font-size: 16px;
-      font-weight: 600;
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
       color: var(--text)
     }
 
     .stat-lbl {
       font-size: 10px;
       color: var(--text-muted);
-      margin-top: 2px
+      margin-top: 4px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.05em;
     }
 
     /* ── Loading overlay ─────────────────────────────────────────── */
@@ -351,36 +383,22 @@
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: rgba(247, 246, 241, .75);
+      background: rgba(15, 23, 42, 0.4);
       align-items: center;
       justify-content: center;
       flex-direction: column;
-      gap: 1rem
+      gap: 1.25rem
     }
 
-    .loading.show {
-      display: flex
-    }
-
-    .spinner {
-      width: 36px;
-      height: 36px;
-      border: 3px solid var(--gray-light);
-      border-top-color: var(--green);
-      border-radius: 50%;
-      animation: spin .7s linear infinite
-    }
-
-    @keyframes spin {
-      to {
-        transform: rotate(360deg)
-      }
-    }
-
-    .loading-text {
-      font-size: 13px;
-      color: var(--text-muted);
-      font-weight: 500
+    .loading-content {
+      background: var(--white);
+      padding: 2rem 3rem;
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: var(--shadow-lg);
     }
 
     /* ── Metrics modal ────────────────────────────────────────────── */
@@ -400,19 +418,22 @@
 
     .modal {
       background: var(--white);
-      border-radius: 14px;
-      padding: 1.5rem;
-      max-width: 520px;
+      border-radius: var(--radius);
+      padding: 2rem;
+      max-width: 560px;
       width: 90%;
       max-height: 85vh;
       overflow-y: auto;
-      box-shadow: var(--shadow)
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
     }
 
     .modal h2 {
-      font-size: 15px;
-      font-weight: 600;
-      margin-bottom: 1rem
+      font-family: 'Outfit', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      color: var(--text);
     }
 
     .modal-close {
@@ -501,23 +522,25 @@
     /* ── Toast ──────────────────────────────────────────────────── */
     .toast {
       position: fixed;
-      bottom: 1.5rem;
-      right: 1.5rem;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%) translateY(10px);
       z-index: 9998;
       background: var(--text);
       color: #fff;
-      padding: .6rem 1rem;
-      border-radius: 8px;
-      font-size: 12.5px;
+      padding: 0.75rem 1.5rem;
+      border-radius: 50px;
+      font-size: 13px;
+      font-weight: 500;
       opacity: 0;
-      transform: translateY(8px);
-      transition: all .25s;
-      pointer-events: none
+      transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+      pointer-events: none;
+      box-shadow: var(--shadow-lg);
     }
 
     .toast.show {
       opacity: 1;
-      transform: translateY(0)
+      transform: translateX(-50%) translateY(0);
     }
 
     /* ── Leaflet overrides ──────────────────────────────────────── */
@@ -538,24 +561,30 @@
     }
 
     .popup-inner {
-      padding: .75rem .9rem;
-      font-family: -apple-system, sans-serif
+      padding: 1rem;
+      font-family: 'Inter', sans-serif;
     }
 
     .popup-inner h4 {
-      font-size: 13px;
-      font-weight: 600;
-      margin-bottom: .35rem
+      font-family: 'Outfit', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      color: var(--text);
     }
 
     .popup-inner p {
       font-size: 12px;
       color: var(--text-muted);
-      margin: .2rem 0
+      margin: 0.25rem 0;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
     }
 
     .popup-inner strong {
-      color: var(--text)
+      color: var(--text);
+      font-weight: 600;
     }
 
     /* scrollbar */
@@ -578,7 +607,9 @@
 
   <!-- ═══ Header ═══════════════════════════════════════════════ -->
   <header>
-    <div class="logo"></div>
+    <div class="logo">
+      <img src="/static/olive_small.png" alt="Logo">
+    </div>
     <div>
       <div class="header-title">Cartographie des Oliveraies Tunisiennes</div>
       <div class="header-sub">Hack The Harvest 2026 · EZZAYRA × ISI — Sujet 01</div>
@@ -645,8 +676,10 @@
 
   <!-- ═══ Loading ═══════════════════════════════════════════════ -->
   <div class="loading" id="loading">
-    <div class="spinner"></div>
-    <div class="loading-text" id="loading-text">Analyse satellite en cours…</div>
+    <div class="loading-content">
+      <div class="spinner"></div>
+      <div class="loading-text" id="loading-text">Analyse satellite en cours…</div>
+    </div>
   </div>
 
   <!-- ═══ Metrics modal ═════════════════════════════════════════ -->
@@ -671,10 +704,19 @@
     const LABELS = { extensif: "Extensif", hyper_intensif: "Hyper-int." };
 
     // ── Map init ────────────────────────────────────────────────
-    const map = L.map("map", { center: [35.6, 9.8], zoom: 7 }); // Center on Tunisia
+    const map = L.map("map", { center: [35.7242, 10.715], zoom: 15, attributionControl: false });
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap contributors", maxZoom: 18
+    // Satellite Base Layer
+    L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}", {
+      maxZoom: 19
+    }).addTo(map);
+
+    // Hybrid Labels Overlay
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/light_only_labels/{z}/{x}/{y}{r}.png", {
+      subdomains: "abcd",
+      maxZoom: 20,
+      zIndex: 1000,
+      opacity: 0.7
     }).addTo(map);
 
     // Draw control
@@ -750,6 +792,11 @@
         lastResults = data;
         hideLoading();
         renderResults(data);
+
+        // Remove the drawn square/perimeter after analysis
+        drawnItems.clearLayers();
+        document.getElementById("btn-analyser").disabled = true;
+        document.getElementById("btn-sub").textContent = "Analyse terminée. Redessinez une zone pour recommencer.";
       } catch (e) {
         hideLoading();
         toast("Erreur API : " + e.message, "#E24B4A");

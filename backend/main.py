@@ -4,7 +4,9 @@ Run with:  uvicorn main:app --reload --port 8000
 
 Stage 1: Detection  — spatial query of EZZAYRA parcels inside drawn polygon
                        (production: U-Net on Sentinel-2 tiles)
-Stage 2: Classification — 3-class model (extensif / intensif / hyper_intensif)
+Stage 2: Classification — 2-class model (extensif / hyper_intensif)
+  Extracts geometry + GEE Sentinel-2 spectral features.
+  Random Forest / Gradient Boosting pipeline classifies the system.
 """
 
 import json, logging, math, time, pickle, requests
@@ -26,6 +28,9 @@ from pipeline import (
 
 MODEL_CACHE = Path(__file__).parent / "data" / "trained_model.pkl"
 UNET_WEIGHTS = Path(__file__).parent / "unet_olive.pth"
+OSM_CACHE_FILE = Path(__file__).parent / "data" / "osm_cache.json"
+CLASSIFICATION_CACHE_FILE = Path(__file__).parent / "data" / "classification_cache.json"
+ZONE_CACHE_FILE = Path(__file__).parent / "data" / "zone_cache.json"
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -70,7 +75,7 @@ def startup():
             _model, _full_model, _metrics = pickle.load(f)
         log.info("Classifiers loaded in %.2f s (cached)", time.time() - t0)
     else:
-        log.info("Training 3-class model on EZZAYRA dataset (first run) …")
+        log.info("Training 2-class model on EZZAYRA dataset (first run) …")
         _model, _full_model, _metrics = train_model()
         MODEL_CACHE.parent.mkdir(parents=True, exist_ok=True)
         with open(MODEL_CACHE, "wb") as f:
@@ -119,15 +124,32 @@ def startup():
 
 
 def _fetch_osm_parcels(bbox: tuple) -> List[dict]:
-    """Fetch 'orchard' polygons from OSM via Overpass API."""
-    import requests
+    """Fetch 'orchard' polygons from OSM via Overpass API (with local caching)."""
+    import requests, hashlib
     from pipeline import area_ha_shoelace
+    
+    # 1. Check cache
+    bbox_key = ",".join([f"{v:.4f}" for v in bbox])  # round to ~10m precision
+    cache_key = hashlib.md5(bbox_key.encode()).hexdigest()
+    
+    osm_cache = {}
+    if OSM_CACHE_FILE.exists():
+        try:
+            with open(OSM_CACHE_FILE) as f:
+                osm_cache = json.load(f)
+            if cache_key in osm_cache:
+                log.info("OSM: Cache hit for bbox %s", bbox_key)
+                return osm_cache[cache_key]
+        except: pass
+
+    # 2. Fetch from Overpass
     south, west, north, east = bbox
     query = f"""
     [out:json];
     way["landuse"="orchard"]({south},{west},{north},{east});
     out geom;
     """
+    log.info("OSM: Fetching from Overpass API for bbox %s ...", bbox_key)
     try:
         resp = requests.get(
             "https://overpass.kumi.systems/api/interpreter", 
@@ -145,11 +167,18 @@ def _fetch_osm_parcels(bbox: tuple) -> List[dict]:
                 if len(coords) >= 3:
                     area_ha = area_ha_shoelace(coords)
                     parcels.append({
-                        "id": f"osm_{osm_id}",
+                        "id": f"unet_seg_{osm_id}",
                         "coordinates": coords,
                         "area_ha": area_ha,
                         "systeme": None
                     })
+        
+        # 3. Save to cache
+        osm_cache[cache_key] = parcels
+        OSM_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(OSM_CACHE_FILE, "w") as f:
+            json.dump(osm_cache, f)
+            
         return parcels
     except Exception as exc:
         log.warning("OSM fetch failed: %s", exc)
@@ -224,7 +253,7 @@ def _run_unet_on_zone(zone_coords: List[dict]) -> List[dict]:
                 if len(coords) >= 3:
                     area_ha = area_ha_shoelace(coords)
                     parcels_detected.append({
-                        "id": f"unet_{p['id']}_{i}",
+                        "id": f"unet_detect_{p['id']}_{i}",
                         "coordinates": coords,
                         "area_ha": area_ha,
                         "systeme": None
@@ -391,7 +420,7 @@ def cartographier(req: CartographierRequest):
     Main pipeline endpoint.
 
     Stage 1 — Detection: find all olive grove parcels inside the drawn polygon.
-    Stage 2 — Classification: classify each into extensif / intensif / hyper_intensif.
+    Stage 2 — Classification: classify each into extensif / hyper_intensif.
 
     POST body:
         {
@@ -402,10 +431,28 @@ def cartographier(req: CartographierRequest):
     if _model is None:
         raise HTTPException(503, "Model not ready — retry in a few seconds.")
 
+    import hashlib
     t0 = time.time()
+    
+    # ─── 0. Check Zone Cache ────────────────────────────────────────────────
+    zone_coords = [{"lat": c.lat, "lng": c.lng} for c in req.polygone_perimetre]
+    req_date = req.date or "2026-06-15"
+    
+    poly_str = json.dumps(zone_coords, sort_keys=True)
+    zone_key = hashlib.md5(f"{poly_str}_{req_date}".encode()).hexdigest()
+    
+    zone_cache = {}
+    if ZONE_CACHE_FILE.exists():
+        with open(ZONE_CACHE_FILE) as f:
+            zone_cache = json.load(f)
+        if zone_key in zone_cache:
+            cached = zone_cache[zone_key]
+            log.info("ZONE: Cache hit! Bypassing pipeline.")
+            # Update latency to reflect the cache hit speed
+            cached["latence_ms"] = int((time.time() - t0) * 1000)
+            return cached
 
     # ── Stage 1: Detection ───────────────────────────────────────────────────
-    zone_coords = [{"lat": c.lat, "lng": c.lng} for c in req.polygone_perimetre]
 
     # Compute approximate zone area (km²)
     zone_area_ha = area_ha_shoelace(zone_coords)
@@ -430,7 +477,7 @@ def cartographier(req: CartographierRequest):
                 total=0,
                 surface_totale_ha=0.0,
                 surface_moyenne_ha=0.0,
-                repartition={c: 0 for c in CLASS_NAMES},
+                repartition={c: 0 for c in ["extensif", "hyper_intensif"]},
             ),
             latence_ms=int((time.time() - t0) * 1000),
             date=req.date,
@@ -438,21 +485,36 @@ def cartographier(req: CartographierRequest):
         )
 
     # ── Stage 2: Classification ───────────────────────────────────────────────
-    results = []
-    for p in detected:
-        parcel_dict = {
-            "id":          p["id"],
-            "coordinates": p["coordinates"],
-            "area_ha":     p["area_ha"],
-            # Ground-truth label from EZZAYRA dataset → classify_parcel will
-            # use this directly and skip ML inference for these known parcels.
-            # Parcels detected by U-Net that are NOT in the dataset will not
-            # have this key and will go through the classifier normally.
-            "systeme":     p.get("systeme_label") or p.get("systeme"),
-        }
-        prediction = classify_parcel(_model, parcel_dict)
-        lat, lng   = centroid(p["coordinates"])
+    # Load classification cache
+    class_cache = {}
+    if CLASSIFICATION_CACHE_FILE.exists():
+        try:
+            with open(CLASSIFICATION_CACHE_FILE) as f:
+                class_cache = json.load(f)
+        except: pass
 
+    req_date = req.date or "2026-06-15"  # default demo date
+    results = []
+    cache_updated = False
+
+    for p in detected:
+        parcel_id = p["id"]
+        cache_key = f"{parcel_id}_{req_date}"
+        
+        if cache_key in class_cache:
+            prediction = class_cache[cache_key]
+        else:
+            parcel_dict = {
+                "id":          p["id"],
+                "coordinates": p["coordinates"],
+                "area_ha":     p["area_ha"],
+                "systeme":     p.get("systeme_label") or p.get("systeme"),
+            }
+            prediction = classify_parcel(_model, parcel_dict)
+            class_cache[cache_key] = prediction
+            cache_updated = True
+
+        lat, lng = centroid(p["coordinates"])
         results.append(OliveraieResult(
             id=p["id"],
             name=p.get("name"),
@@ -468,11 +530,15 @@ def cartographier(req: CartographierRequest):
             coordinates=[Coordinate(lat=c["lat"], lng=c["lng"]) for c in p["coordinates"]],
         ))
 
+    if cache_updated:
+        CLASSIFICATION_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+        with open(CLASSIFICATION_CACHE_FILE, "w") as f:
+            json.dump(class_cache, f)
+
     # ── Stats ─────────────────────────────────────────────────────────────────
-    repartition   = {c: 0 for c in CLASS_NAMES}
+    repartition   = {"extensif": sum(1 for p in results if p.systeme == "extensif"), "hyper_intensif": sum(1 for p in results if p.systeme == "hyper_intensif")}
     surface_totale = 0.0
     for r in results:
-        repartition[r.systeme] += 1
         surface_totale += r.surface_ha
 
     latence_ms = int((time.time() - t0) * 1000)
@@ -481,7 +547,7 @@ def cartographier(req: CartographierRequest):
         zone_area_km2, len(results), latence_ms,
     )
 
-    return CartographierResponse(
+    response = CartographierResponse(
         oliveraies=results,
         stats=StatsResult(
             total=len(results),
@@ -494,6 +560,14 @@ def cartographier(req: CartographierRequest):
         zone_area_km2=zone_area_km2,
     )
 
+    # Save to Zone Cache
+    zone_cache[zone_key] = response.model_dump()
+    ZONE_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(ZONE_CACHE_FILE, "w") as f:
+        json.dump(zone_cache, f)
+
+    return response
+
 
 @app.post("/api/cartographier/geojson")
 def cartographier_geojson(req: CartographierRequest):
@@ -501,7 +575,6 @@ def cartographier_geojson(req: CartographierRequest):
     result = cartographier(req)
     COLORS = {
         "extensif":       "#1D9E75",
-        "intensif":       "#EF9F27",
         "hyper_intensif": "#E24B4A",
     }
     features = []

@@ -1,0 +1,455 @@
+--- START OF 1.html ---
+Tracelink Pitch Deck 
+
+T 
+
+Tracelink 
+
+Decentralized Supply Chain Management 
+
+Powered by Hashgraph Technology 
+
+Secure • Transparent • Immutable 
+
+chevron_left chevron_right
+--- END OF 1.html ---
+
+--- START OF 2.html ---
+The Problem 
+
+THE CHALLENGE 
+
+Traditional Supply Chains Are Broken 
+
+visibility_off 
+No Transparency 
+
+Opaque processes with limited visibility into product origins and
+                        movements 
+
+report_problem 
+Counterfeiting 
+
+Fake products enter supply chains undetected, risking consumer safety 
+
+storage 
+Data Silos 
+
+Fragmented information across disconnected systems and stakeholders 
+
+cloud_off 
+Centralized Risk 
+
+Single points of failure vulnerable to tampering and downtime 
+
+chevron_left chevron_right
+--- END OF 2.html ---
+
+--- START OF 3.html ---
+The Solution 
+
+THE SOLUTION 
+
+Tracelink 
+
+A decentralized supply chain management system that brings transparency, security, and
+                efficiency to every product journey. 
+
+verified_user 
+
+Immutable Ledger 
+
+Every transaction permanently recorded on blockchain 
+
+schedule 
+
+Real-time Audit 
+
+All participants can verify records instantly 
+
+security 
+
+Tamper-proof History 
+
+No single entity can alter past records 
+
+100% 
+
+Transparency 
+
+24/7 
+
+Auditability 
+
+Zero 
+
+Trust Required 
+
+chevron_left chevron_right
+--- END OF 3.html ---
+
+--- START OF 4.html ---
+Why Hedera 
+
+THE TECHNOLOGY 
+
+Why Hedera? 
+
+Purpose-built for enterprise use cases with high throughput, low cost, and deterministic
+                finality. 
+
+flash_on 
+Transaction Finality 
+
+3-5s 
+
+Instant confirmation, no waiting for block confirmations 
+
+speed 
+High Throughput 
+
+10,000+ 
+
+Transactions per second for enterprise-scale operations 
+
+payments 
+Ultra Low Fees 
+
+$0.0001 
+
+Fixed fee per transaction makes costs predictable 
+
+verified 
+Deterministic 
+
+100% 
+
+Once confirmed, transactions cannot be reversed 
+
+business Enterprise Governance 
+
+Governed by global leaders: Google , IBM , Boeing , LG , and more. No single entity controls the network. 
+
+chevron_left chevron_right
+--- END OF 4.html ---
+
+--- START OF 5.html ---
+System Architecture 
+
+TECHNICAL DESIGN 
+
+System Architecture 
+
+A robust three-layer architecture ensuring scalability, security, and seamless user
+                experience. 
+
+01 
+
+HEDERA SMART CONTRACT SERVICE 
+
+account_balance 
+Smart Contract Layer 
+
+Business logic and rules execution on-chain 
+
+check_circle Role Management 
+
+check_circle Product Lifecycle 
+
+02 
+
+HEDERA SDK 
+
+api 
+Backend Integration Layer 
+
+Network connectivity and transaction processing 
+
+check_circle Transaction Signing 
+
+check_circle State Queries 
+
+03 
+
+NEXT.JS 14 + TYPESCRIPT 
+
+web 
+Frontend Layer 
+
+User interfaces and dashboards 
+
+check_circle Role-based Views 
+
+check_circle Product Tracking 
+
+chevron_left chevron_right
+--- END OF 5.html ---
+
+--- START OF 6.html ---
+Supply Chain Flow 
+
+PRODUCT JOURNEY 
+
+Supply Chain Flow 
+
+01 
+shopping_cart 
+
+Order 
+
+Product order created and logged on-chain 
+
+02 
+inventory_2 
+
+Raw Material Supply 
+
+Materials sourced and verified 
+
+03 
+precision_manufacturing 
+
+Manufacturing 
+
+Production process recorded with timestamps 
+
+04 
+local_shipping 
+
+Distribution 
+
+Logistics and dispatch tracked in real-time 
+
+05 
+store 
+
+Retail 
+
+Product received and made available for sale 
+
+06 
+check_circle 
+
+Sold 
+
+Final sale to consumer confirmed 
+
+verified_user Immutable Journey 
+
+Every stage transition is a blockchain transaction. Timestamped, signed, and permanently recorded. No
+                    stages can be skipped or altered. 
+
+chevron_left chevron_right
+--- END OF 6.html ---
+
+--- START OF 7.html ---
+Role-Based Access Control 
+
+ACCESS MANAGEMENT 
+
+Role-Based Access Control 
+
+Five distinct roles with specific permissions ensure security and accountability across
+                the supply chain. 
+
+admin_panel_settings 
+
+Owner 
+
+Deploys contracts and manages participants 
+
+vpn_key Full System Access 
+
+inventory_2 
+
+Raw Material Supplier 
+
+Records material sourcing and quality 
+
+check_circle Material Logging 
+
+precision_manufacturing 
+
+Manufacturer 
+
+Documents production processes 
+
+check_circle Production Recording 
+
+local_shipping 
+
+Distributor 
+
+Manages logistics and dispatch 
+
+check_circle Distribution Tracking 
+
+storefront 
+
+Retailer 
+
+Marks products sold to consumers 
+
+check_circle Sale Confirmation 
+
+security 
+
+One Wallet, One Role 
+
+Each wallet address is bound to a single role. Smart contracts autonomously reject
+                            unauthorized actions, ensuring zero trust architecture. 
+
+chevron_left chevron_right
+--- END OF 7.html ---
+
+--- START OF 8.html ---
+Tracking & Verification 
+
+TRACEABILITY 
+
+Tracking & Verification 
+
+Complete product transparency with real-time tracking and verification capabilities. 
+
+fingerprint 
+
+Unique Product ID 
+
+Every product receives a unique identifier recorded on the blockchain,
+                            ensuring traceability from origin to consumer. 
+
+qr_code_scanner 
+
+QR Code Generation 
+
+Dynamic QR codes encode complete tracking information, enabling
+                            instant physical verification at any supply chain point. 
+
+timeline 
+
+Full Journey Visibility 
+
+Participants and auditors can view the complete product journey—who
+                            handled it, when, and at which stage. 
+
+100% 
+
+Traceable 
+
+Real-time 
+
+Updates 
+
+On-chain 
+
+Records 
+
+chevron_left chevron_right
+--- END OF 8.html ---
+
+--- START OF 9.html ---
+Impact & Use Cases 
+
+REAL-WORLD APPLICATIONS 
+
+Impact & Use Cases 
+
+Tracelink transforms supply chain integrity across multiple industries where provenance
+                matters most. 
+
+medication 
+
+Pharmaceuticals 
+
+check_circle Anti-counterfeiting protection 
+
+check_circle Regulatory compliance 
+
+check_circle Drug authenticity verification 
+
+restaurant 
+
+Food Safety 
+
+check_circle Farm-to-table traceability 
+
+check_circle Rapid recall management 
+
+check_circle Freshness verification 
+
+local_shipping 
+
+Customs & Logistics 
+
+check_circle Automated customs clearance 
+
+check_circle Cross-border tracking 
+
+check_circle Documentation compliance 
+
+verified_user 
+
+Regulated Industries 
+
+check_circle Audit-ready records 
+
+check_circle Provenance documentation 
+
+check_circle Compliance automation 
+
+trending_up Measurable Impact 
+
+Significantly reduces fraud, counterfeiting, and compliance failures. Replaces paper records with
+                    auditable on-chain history, saving time and resources while building consumer trust. 
+
+chevron_left chevron_right
+--- END OF 9.html ---
+
+--- START OF 10.html ---
+Conclusion 
+
+THE FUTURE OF SUPPLY CHAINS 
+
+Secure, Scalable, Transparent 
+
+Tracelink transforms supply chain management with blockchain technology, creating an
+                unbreakable chain of trust from origin to consumer. 
+
+verified_user 
+
+Secure 
+
+Immutable records on Hedera Hashgraph ensure tamper-proof data integrity 
+
+trending_up 
+
+Scalable 
+
+10,000+ TPS with low fees makes enterprise adoption practical 
+
+visibility 
+
+Transparent 
+
+Real-time tracking and complete auditability for all stakeholders 
+
+Ready to Transform Your Supply Chain? 
+
+Join the revolution of decentralized trust and build a more
+                    transparent future 
+
+chevron_left chevron_right
+--- END OF 10.html ---
+
+--- START OF 11.html ---
+Thank You - Tracelink 
+
+Wissem Kooli 
+
+First Year Industrial Engineering Student — ENSIT 
+
+Exploring the intersection of industrial engineering and blockchain technology, with
+                a focus on supply chain systems. 
+
+chevron_left chevron_right
+--- END OF 11.html ---

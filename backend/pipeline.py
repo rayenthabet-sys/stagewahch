@@ -325,26 +325,40 @@ def _get_spectral_features(parcel: dict) -> List[float]:
 
 def populate_cache_from_gee(parcels: List[dict]) -> None:
     """
-    Call once at startup: batch-fetch GEE spectral data for all parcels
-    and persist to CACHE_FILE so _get_spectral_features() is instant.
+    Call once at startup: batch-fetch GEE spectral data ONLY for parcels
+    not already in CACHE_FILE to avoid redundant server-side calls.
     """
-    log.info("GEE: batch-fetching spectral data for %d parcels …", len(parcels))
-    gee_results = batch_extract_gee(parcels)
-    if not gee_results:
-        log.warning("GEE returned no data — spectral features will be simulated")
-        return
-
-    # Load existing cache
+    # 1. Load existing cache
     cache: dict = {}
     if CACHE_FILE.exists():
-        with open(CACHE_FILE) as f:
-            cache = json.load(f)
+        try:
+            with open(CACHE_FILE) as f:
+                cache = json.load(f)
+        except Exception as e:
+            log.warning("Could not load cache: %s. Creating new.", e)
 
-    for p in parcels:
+    # 2. Identify missing parcels
+    missing_parcels = [p for p in parcels if p["id"] not in cache]
+    
+    if not missing_parcels:
+        log.info("GEE: All %d parcels already in cache. Skipping GEE fetch ✓", len(parcels))
+        return
+
+    log.info("GEE: Cache has %d/%d entries. Fetching missing %d parcels …", 
+             len(cache), len(parcels), len(missing_parcels))
+
+    # 3. Fetch ONLY missing
+    gee_results = batch_extract_gee(missing_parcels)
+    if not gee_results:
+        log.warning("GEE returned no data for missing parcels")
+        return
+
+    # 4. Merge results
+    for p in missing_parcels:
         pid = p["id"]
-        if pid not in cache and pid in gee_results:
+        if pid in gee_results:
             ndvi, ndwi, ndre = gee_results[pid]
-            sys_ = p.get("systeme", "extensif")
+            sys_ = p.get("systeme_label") or p.get("systeme", "extensif")
             amp  = _rng.uniform(*_SPECTRAL_RANGES[sys_][1])
             cc   = _rng.uniform(*_SPECTRAL_RANGES[sys_][4])
             glcm = _rng.uniform(*_SPECTRAL_RANGES[sys_][5])
@@ -353,7 +367,7 @@ def populate_cache_from_gee(parcels: List[dict]) -> None:
     CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with open(CACHE_FILE, "w") as f:
         json.dump(cache, f, indent=2)
-    log.info("Cache saved → %s (%d entries)", CACHE_FILE, len(cache))
+    log.info("Cache updated → %s (Total: %d entries)", CACHE_FILE, len(cache))
 
 
 def full_features(parcel: dict) -> np.ndarray:
@@ -367,7 +381,7 @@ def full_features(parcel: dict) -> np.ndarray:
 # ─────────────────────────────────────────────────────────────
 
 DATA_DIR   = Path(__file__).parent / "data"
-CLASS_NAMES = ["extensif", "intensif", "hyper_intensif"]
+CLASS_NAMES = ["extensif", "hyper_intensif"]
 
 
 def _gouvernorat_group(lat: float, lng: float) -> int:
@@ -375,43 +389,6 @@ def _gouvernorat_group(lat: float, lng: float) -> int:
     grid_lat = int((lat - 30.0) / 1.2)
     grid_lng = int((lng -  8.0) / 1.2)
     return grid_lat * 10 + grid_lng
-
-
-def _make_intensif_parcel(idx: int, rng: random.Random) -> dict:
-    """
-    Generate a synthetic 'intensif' parcel interpolated between
-    extensif (south, large, irregular) and hyper-intensif (north, small, compact).
-    Placed in central Tunisia (Kairouan / Siliana belt, lat 35.5–36.2, lng 9.2–10.0).
-    """
-    # Central Tunisia lat belt — overlaps with real extensif/HI lat range
-    # so the classifier learns area/compactness, not spurious lat signal
-    lat0 = rng.uniform(34.8, 35.8)
-    lng0 = rng.uniform(8.8, 10.4)
-    area_target = rng.uniform(15.0, 200.0)   # ha  — intermediate between ext and HI
-
-    # Build a roughly rectangular polygon of ~area_target ha
-    side_deg_lat = math.sqrt(area_target * 10_000) / LAT_M
-    side_deg_lng = side_deg_lat / math.cos(math.radians(lat0))
-    # Add moderate irregularity (6–10 vertices)
-    n_pts = rng.randint(6, 10)
-    angles = sorted(rng.uniform(0, 2 * math.pi) for _ in range(n_pts))
-    jitter = 0.25
-    coords = []
-    for a in angles:
-        r_lat = side_deg_lat * (0.5 + rng.uniform(-jitter, jitter))
-        r_lng = side_deg_lng * (0.5 + rng.uniform(-jitter, jitter))
-        coords.append({
-            "lat": lat0 + r_lat * math.sin(a),
-            "lng": lng0 + r_lng * math.cos(a),
-        })
-
-    return {
-        "id":       f"int_synth_{idx:03d}",
-        "name":     f"Intensif Synthétique {idx + 1}",
-        "systeme":  "intensif",
-        "area_ha":  area_ha_shoelace(coords) or area_target,
-        "coordinates": coords,
-    }
 
 
 def load_dataset():
@@ -429,20 +406,10 @@ def load_dataset():
         lat, lng = centroid(p["coordinates"])
         groups.append(_gouvernorat_group(lat, lng))
 
-    # Generate synthetic intensif parcels (same count as average of ext & HI)
-    n_int = (len(ext_data["parcels"]) + len(hi_data["parcels"])) // 2
-    synth_rng = random.Random(2026)
-    for i in range(n_int):
-        p = _make_intensif_parcel(i, synth_rng)
-        parcels.append(p)
-        labels.append(1)
-        lat, lng = centroid(p["coordinates"])
-        groups.append(_gouvernorat_group(lat, lng))
-
     for p in hi_data["parcels"]:
         p["systeme"] = "hyper_intensif"
         parcels.append(p)
-        labels.append(2)
+        labels.append(1)
         lat, lng = centroid(p["coordinates"])
         groups.append(_gouvernorat_group(lat, lng))
 
@@ -518,9 +485,8 @@ def train_model():
         "full_confusion_matrix": full_cm,
         "full_class_report":     full_rep,
         # dataset counts
-        "n_extensif":       counts["extensif"],
-        "n_intensif":       counts["intensif"],
-        "n_hyper_intensif": counts["hyper_intensif"],
+        "n_extensif":       counts.get("extensif", 0),
+        "n_hyper_intensif": counts.get("hyper_intensif", 0),
         # shared
         "class_names":   CLASS_NAMES,
         "top_features":  top_features,

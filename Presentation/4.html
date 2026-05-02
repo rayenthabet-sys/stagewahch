@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Why Hedera</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+
+
+
+        }
+
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            position: relative;
+            color: white;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .left-section {
+            flex: 1.2;
+            padding: 40px 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .right-section {
+            flex: 0.8;
+            position: relative;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .right-section img {
+            width: 90%;
+            height: 90%;
+            object-fit: contain;
+            filter: drop-shadow(0 0 40px rgba(0, 242, 255, 0.3));
+        }
+
+        .section-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #00f2ff;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 42px;
+            margin: 0 0 10px 0;
+            font-weight: 700;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #00f2ff 0%, #8b5cf6 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: #94a3b8;
+            margin-bottom: 25px;
+            line-height: 1.5;
+            max-width: 550px;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(0, 242, 255, 0.05);
+            border-color: rgba(0, 242, 255, 0.3);
+        }
+
+        .feature-icon {
+            font-size: 24px;
+            color: #00f2ff;
+            margin-bottom: 12px;
+        }
+
+        .feature-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 8px;
+        }
+
+        .feature-value {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 28px;
+            font-weight: 700;
+            color: #00f2ff;
+            margin-bottom: 6px;
+        }
+
+        .feature-desc {
+            font-size: 14px;
+            color: #94a3b8;
+            line-height: 1.5;
+        }
+
+        .governance-section {
+            background: rgba(139, 92, 246, 0.08);
+            border: 1px solid rgba(139, 92, 246, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .governance-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #e2e8f0;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .governance-companies {
+            font-size: 16px;
+            color: #94a3b8;
+            line-height: 1.8;
+        }
+
+        .governance-companies span {
+            color: #00f2ff;
+            font-weight: 600;
+        }
+
+        /* Navigation Controls */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 242, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 242, 255, 0.2);
+        }
+
+        .nav-btn i {
+            font-size: 32px;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="slide-container">
+        <div class="left-section">
+            <div class="section-label">THE TECHNOLOGY</div>
+            <h2>Why Hedera?</h2>
+            <p class="subtitle">Purpose-built for enterprise use cases with high throughput, low cost, and deterministic
+                finality.
+            </p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">flash_on</i>
+                    <div class="feature-title">Transaction Finality</div>
+                    <div class="feature-value">3-5s</div>
+                    <div class="feature-desc">Instant confirmation, no waiting for block confirmations</div>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">speed</i>
+                    <div class="feature-title">High Throughput</div>
+                    <div class="feature-value">10,000+</div>
+                    <div class="feature-desc">Transactions per second for enterprise-scale operations</div>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">payments</i>
+                    <div class="feature-title">Ultra Low Fees</div>
+                    <div class="feature-value">$0.0001</div>
+                    <div class="feature-desc">Fixed fee per transaction makes costs predictable</div>
+                </div>
+
+                <div class="feature-card">
+                    <i class="material-icons feature-icon">verified</i>
+                    <div class="feature-title">Deterministic</div>
+                    <div class="feature-value">100%</div>
+                    <div class="feature-desc">Once confirmed, transactions cannot be reversed</div>
+                </div>
+            </div>
+
+            <div class="governance-section">
+                <div class="governance-title">
+                    <i class="material-icons">business</i>
+                    Enterprise Governance
+                </div>
+                <div class="governance-companies">
+                    Governed by global leaders: <span>Google</span>, <span>IBM</span>, <span>Boeing</span>,
+                    <span>LG</span>, and more. No single entity controls the network.
+                </div>
+            </div>
+        </div>
+
+        <div class="right-section">
+            <img src="assets/img_87c72e90c1.jpg" alt="Hedera Hashgraph">
+        </div>
+    </div>
+
+
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" title="Previous Slide">
+            <i class="material-icons">chevron_left</i>
+        </button>
+        <button class="nav-btn" id="nextBtn" title="Next Slide">
+            <i class="material-icons">chevron_right</i>
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const path = window.location.pathname;
+            const filename = path.split('/').pop() || '1.html';
+            const pageMatch = filename.match(/(\d+)/);
+            const currentPage = pageMatch ? parseInt(pageMatch[0]) : 1;
+            const totalPages = 11;
+
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            if (currentPage <= 1) {
+                prevBtn.disabled = true;
+            } else {
+                prevBtn.onclick = () => {
+                    const prevPage = currentPage - 1;
+                    window.location.href = prevPage + '.html';
+                };
+            }
+
+            if (currentPage >= totalPages) {
+                nextBtn.disabled = true;
+            } else {
+                nextBtn.onclick = () => {
+                    const nextPage = currentPage + 1;
+                    window.location.href = nextPage + '.html';
+                };
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' && currentPage < totalPages) nextBtn.click();
+                if (e.key === 'ArrowLeft' && currentPage > 1) prevBtn.click();
+            });
+        });
+    </script>
+</body>
+
+</html>

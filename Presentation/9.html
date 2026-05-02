@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impact & Use Cases</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            
+            
+            
+        }
+
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            position: relative;
+            color: white;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .left-section {
+            flex: 1.2;
+            padding: 40px 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .right-section {
+            flex: 0.8;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .right-section img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.4;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(10, 10, 10, 1) 0%, rgba(10, 10, 10, 0) 60%);
+        }
+
+        .section-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #00f2ff;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 42px;
+            margin: 0 0 10px 0;
+            font-weight: 700;
+            line-height: 1.1;
+            color: #ffffff;
+        }
+
+        .subtitle {
+            font-size: 16px;
+            color: #94a3b8;
+            margin-bottom: 20px;
+            line-height: 1.5;
+            max-width: 550px;
+        }
+
+        .use-cases-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .use-case-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .use-case-card:hover {
+            background: rgba(0, 242, 255, 0.05);
+            border-color: rgba(0, 242, 255, 0.3);
+            transform: translateY(-5px);
+        }
+
+        .use-case-icon-wrapper {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 45px;
+            height: 45px;
+            border-radius: 10px;
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.1) 0%, rgba(139, 92, 246, 0.1) 100%);
+            margin-bottom: 15px;
+        }
+
+        .use-case-icon {
+            font-size: 24px;
+            color: #00f2ff;
+        }
+
+        .use-case-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 18px;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 10px;
+        }
+
+        .use-case-benefits {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .benefit-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 14px;
+            color: #94a3b8;
+        }
+
+        .benefit-item i {
+            font-size: 18px;
+            color: #4ade80;
+        }
+
+        .impact-box {
+            margin-top: 20px;
+            padding: 16px 20px;
+            background: linear-gradient(135deg, rgba(74, 222, 128, 0.08) 0%, rgba(0, 242, 255, 0.08) 100%);
+            border: 1px solid rgba(74, 222, 128, 0.2);
+            border-radius: 12px;
+        }
+
+        .impact-box h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4ade80;
+            margin: 0 0 10px 0;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .impact-box p {
+            font-size: 14px;
+            color: #94a3b8;
+            margin: 0;
+            line-height: 1.6;
+        }
+    
+        /* Navigation Controls */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 242, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 242, 255, 0.2);
+        }
+
+        .nav-btn i {
+            font-size: 32px;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="slide-container">
+        <div class="left-section">
+            <div class="section-label">REAL-WORLD APPLICATIONS</div>
+            <h2>Impact & Use Cases</h2>
+            <p class="subtitle">Tracelink transforms supply chain integrity across multiple industries where provenance
+                matters most.</p>
+
+            <div class="use-cases-grid">
+                <div class="use-case-card">
+                    <div class="use-case-icon-wrapper">
+                        <i class="material-icons use-case-icon">medication</i>
+                    </div>
+                    <div class="use-case-title">Pharmaceuticals</div>
+                    <div class="use-case-benefits">
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Anti-counterfeiting protection</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Regulatory compliance</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Drug authenticity verification</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="use-case-card">
+                    <div class="use-case-icon-wrapper">
+                        <i class="material-icons use-case-icon">restaurant</i>
+                    </div>
+                    <div class="use-case-title">Food Safety</div>
+                    <div class="use-case-benefits">
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Farm-to-table traceability</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Rapid recall management</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Freshness verification</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="use-case-card">
+                    <div class="use-case-icon-wrapper">
+                        <i class="material-icons use-case-icon">local_shipping</i>
+                    </div>
+                    <div class="use-case-title">Customs & Logistics</div>
+                    <div class="use-case-benefits">
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Automated customs clearance</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Cross-border tracking</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Documentation compliance</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="use-case-card">
+                    <div class="use-case-icon-wrapper">
+                        <i class="material-icons use-case-icon">verified_user</i>
+                    </div>
+                    <div class="use-case-title">Regulated Industries</div>
+                    <div class="use-case-benefits">
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Audit-ready records</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Provenance documentation</span>
+                        </div>
+                        <div class="benefit-item">
+                            <i class="material-icons">check_circle</i>
+                            <span>Compliance automation</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="impact-box">
+                <h3>
+                    <i class="material-icons">trending_up</i>
+                    Measurable Impact
+                </h3>
+                <p>Significantly reduces fraud, counterfeiting, and compliance failures. Replaces paper records with
+                    auditable on-chain history, saving time and resources while building consumer trust.</p>
+            </div>
+        </div>
+
+        <div class="right-section">
+            <img src="assets/img_dccfde3bd2.jpg" alt="Industry Applications">
+            <div class="overlay"></div>
+        </div>
+    </div>
+
+
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" title="Previous Slide">
+            <i class="material-icons">chevron_left</i>
+        </button>
+        <button class="nav-btn" id="nextBtn" title="Next Slide">
+            <i class="material-icons">chevron_right</i>
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const path = window.location.pathname;
+            const filename = path.split('/').pop() || '1.html';
+            const pageMatch = filename.match(/(\d+)/);
+            const currentPage = pageMatch ? parseInt(pageMatch[0]) : 1;
+            const totalPages = 11;
+
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            if (currentPage <= 1) {
+                prevBtn.disabled = true;
+            } else {
+                prevBtn.onclick = () => {
+                    const prevPage = currentPage - 1;
+                    window.location.href = prevPage + '.html';
+                };
+            }
+
+            if (currentPage >= totalPages) {
+                nextBtn.disabled = true;
+            } else {
+                nextBtn.onclick = () => {
+                    const nextPage = currentPage + 1;
+                    window.location.href = nextPage + '.html';
+                };
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' && currentPage < totalPages) nextBtn.click();
+                if (e.key === 'ArrowLeft' && currentPage > 1) prevBtn.click();
+            });
+        });
+    </script>
+</body>
+
+</html>

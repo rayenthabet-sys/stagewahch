@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tracelink Pitch Deck</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at 50% 0%, #1a2c38 0%, #000000 70%);
+            position: relative;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        /* Animated Background Elements */
+        .bg-orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            opacity: 0.4;
+        }
+
+        .orb-1 {
+            width: 400px;
+            height: 400px;
+            background: #00f2ff;
+            top: -100px;
+            left: -100px;
+        }
+
+        .orb-2 {
+            width: 300px;
+            height: 300px;
+            background: #8b5cf6;
+            bottom: -50px;
+            right: -50px;
+        }
+
+        .grid-bg {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            z-index: 1;
+        }
+
+        .content-wrapper {
+            position: relative;
+            z-index: 10;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .logo-mark {
+            width: 280px;
+            height: auto;
+            filter: drop-shadow(0 0 40px rgba(0, 242, 255, 0.4));
+            margin-bottom: 20px;
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+        }
+
+        h1 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 64px;
+            margin: 0;
+            font-weight: 700;
+            letter-spacing: -1px;
+            line-height: 1.1;
+        }
+
+        .subtitle {
+            font-size: 24px;
+            color: #94a3b8;
+            max-width: 700px;
+            font-weight: 300;
+            line-height: 1.5;
+            margin-top: 10px;
+        }
+
+        .hedera-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 24px;
+            border-radius: 50px;
+            margin-top: 30px;
+            backdrop-filter: blur(10px);
+        }
+
+        .hedera-badge span {
+            font-size: 16px;
+            color: #e2e8f0;
+            font-weight: 500;
+        }
+
+        .hedera-logo {
+            color: #00f2ff;
+            font-weight: bold;
+            font-size: 18px;
+            letter-spacing: 1px;
+        }
+
+
+        .tagline {
+            font-size: 14px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 20px;
+        }
+
+        /* Navigation Controls */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 242, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 242, 255, 0.2);
+        }
+
+        .nav-btn i {
+            font-size: 32px;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="slide-container">
+        <div class="grid-bg"></div>
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+
+        <div class="content-wrapper">
+            <img src="assets/Tracelink.png" class="logo-mark" alt="Tracelink Logo">
+            <h1>Tracelink</h1>
+            <p class="subtitle">Decentralized Supply Chain Management</p>
+
+            <div class="hedera-badge">
+                <span>Powered by Hashgraph Technology</span>
+            </div>
+
+            <p class="tagline">Secure • Transparent • Immutable</p>
+        </div>
+    </div>
+
+
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" title="Previous Slide">
+            <i class="material-icons">chevron_left</i>
+        </button>
+        <button class="nav-btn" id="nextBtn" title="Next Slide">
+            <i class="material-icons">chevron_right</i>
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const path = window.location.pathname;
+            const filename = path.split('/').pop() || '1.html';
+            const pageMatch = filename.match(/(\d+)/);
+            const currentPage = pageMatch ? parseInt(pageMatch[0]) : 1;
+            const totalPages = 11;
+
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            if (currentPage <= 1) {
+                prevBtn.disabled = true;
+            } else {
+                prevBtn.onclick = () => {
+                    const prevPage = currentPage - 1;
+                    window.location.href = prevPage + '.html';
+                };
+            }
+
+            if (currentPage >= totalPages) {
+                nextBtn.disabled = true;
+            } else {
+                nextBtn.onclick = () => {
+                    const nextPage = currentPage + 1;
+                    window.location.href = nextPage + '.html';
+                };
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' && currentPage < totalPages) nextBtn.click();
+                if (e.key === 'ArrowLeft' && currentPage > 1) prevBtn.click();
+            });
+        });
+    </script>
+</body>
+
+</html>

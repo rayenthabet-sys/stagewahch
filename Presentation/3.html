@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Solution</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@400;700&display=swap');
+
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #050505;
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+            
+            
+            
+        }
+
+        .slide-container {
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 100%);
+            position: relative;
+            color: white;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .left-section {
+            flex: 1.2;
+            padding: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            z-index: 10;
+        }
+
+        .right-section {
+            flex: 0.8;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .right-section img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            opacity: 0.25;
+        }
+
+        .overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(270deg, rgba(10, 10, 10, 1) 0%, rgba(10, 10, 10, 0) 50%);
+        }
+
+        .section-label {
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            color: #4ade80;
+            margin-bottom: 20px;
+            font-weight: 600;
+        }
+
+        h2 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 52px;
+            margin: 0 0 20px 0;
+            font-weight: 700;
+            line-height: 1.1;
+            background: linear-gradient(135deg, #4ade80 0%, #00f2ff 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            font-size: 20px;
+            color: #94a3b8;
+            margin-bottom: 45px;
+            line-height: 1.6;
+            max-width: 550px;
+        }
+
+        .features-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.03);
+            border-left: 4px solid #00f2ff;
+            border-radius: 12px;
+            padding: 24px 28px;
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            transition: all 0.3s ease;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.06);
+            transform: translateX(8px);
+        }
+
+        .feature-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            background: linear-gradient(135deg, #00f2ff 0%, #4ade80 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .feature-icon i {
+            font-size: 28px;
+            color: #000;
+        }
+
+        .feature-content h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #ffffff;
+            margin: 0 0 6px 0;
+        }
+
+        .feature-content p {
+            font-size: 15px;
+            color: #94a3b8;
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .stats-row {
+            display: flex;
+            gap: 40px;
+            margin-top: 40px;
+            padding-top: 40px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-item {
+            text-align: left;
+        }
+
+        .stat-number {
+            font-family: 'Space Grotesk', sans-serif;
+            font-size: 36px;
+            font-weight: 700;
+            color: #00f2ff;
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+    
+        /* Navigation Controls */
+        .nav-controls {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            gap: 15px;
+            z-index: 1000;
+        }
+
+        .nav-btn {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+        }
+
+        .nav-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(0, 242, 255, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 242, 255, 0.2);
+        }
+
+        .nav-btn i {
+            font-size: 32px;
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            transform: none;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="slide-container">
+        <div class="left-section">
+            <div class="section-label">THE SOLUTION</div>
+            <h2>Tracelink</h2>
+            <p class="subtitle">A decentralized supply chain management system that brings transparency, security, and
+                efficiency to every product journey.</p>
+
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="material-icons">verified_user</i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Immutable Ledger</h3>
+                        <p>Every transaction permanently recorded on blockchain</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="material-icons">schedule</i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Real-time Audit</h3>
+                        <p>All participants can verify records instantly</p>
+                    </div>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">
+                        <i class="material-icons">security</i>
+                    </div>
+                    <div class="feature-content">
+                        <h3>Tamper-proof History</h3>
+                        <p>No single entity can alter past records</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="stats-row">
+                <div class="stat-item">
+                    <div class="stat-number">100%</div>
+                    <div class="stat-label">Transparency</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">24/7</div>
+                    <div class="stat-label">Auditability</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-number">Zero</div>
+                    <div class="stat-label">Trust Required</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="right-section">
+            <img src="assets/img_186e7c93ad.jpeg" alt="Blockchain Technology">
+            <div class="overlay"></div>
+        </div>
+    </div>
+
+
+    <div class="nav-controls">
+        <button class="nav-btn" id="prevBtn" title="Previous Slide">
+            <i class="material-icons">chevron_left</i>
+        </button>
+        <button class="nav-btn" id="nextBtn" title="Next Slide">
+            <i class="material-icons">chevron_right</i>
+        </button>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const path = window.location.pathname;
+            const filename = path.split('/').pop() || '1.html';
+            const pageMatch = filename.match(/(\d+)/);
+            const currentPage = pageMatch ? parseInt(pageMatch[0]) : 1;
+            const totalPages = 11;
+
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+
+            if (currentPage <= 1) {
+                prevBtn.disabled = true;
+            } else {
+                prevBtn.onclick = () => {
+                    const prevPage = currentPage - 1;
+                    window.location.href = prevPage + '.html';
+                };
+            }
+
+            if (currentPage >= totalPages) {
+                nextBtn.disabled = true;
+            } else {
+                nextBtn.onclick = () => {
+                    const nextPage = currentPage + 1;
+                    window.location.href = nextPage + '.html';
+                };
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (e.key === 'ArrowRight' && currentPage < totalPages) nextBtn.click();
+                if (e.key === 'ArrowLeft' && currentPage > 1) prevBtn.click();
+            });
+        });
+    </script>
+</body>
+
+</html>

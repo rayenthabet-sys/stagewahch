@@ -221,7 +221,7 @@ def _extract_real_sentinel(parcel: dict) -> List[float]:
 
     # Load May-June data (max contrast)
     cube = conn.load_collection(
-        "SENTINEL_2_L2A",
+        "SENTINEL2_L2A",
         spatial_extent=spatial_extent,
         temporal_extent=["2025-05-01", "2025-06-30"],
         bands=["B03", "B04", "B05", "B08"] 
@@ -232,10 +232,10 @@ def _extract_real_sentinel(parcel: dict) -> List[float]:
     ndwi = (cube.band("B03") - cube.band("B08")) / (cube.band("B03") + cube.band("B08"))
     ndre = (cube.band("B08") - cube.band("B05")) / (cube.band("B08") + cube.band("B05"))
 
-    # Aggregate spatially over the parcel and temporally (mean over the period)
-    ndvi_mean = ndvi.aggregate_spatial(geometries=spatial_extent, reducer="mean").reduce_dimension(dimension="t", reducer="mean")
-    ndwi_mean = ndwi.aggregate_spatial(geometries=spatial_extent, reducer="mean").reduce_dimension(dimension="t", reducer="mean")
-    ndre_mean = ndre.aggregate_spatial(geometries=spatial_extent, reducer="mean").reduce_dimension(dimension="t", reducer="mean")
+    # Aggregate temporally (mean over the period) then spatially over the parcel
+    ndvi_mean = ndvi.reduce_dimension(dimension="t", reducer="mean").aggregate_spatial(geometries=spatial_extent, reducer="mean")
+    ndwi_mean = ndwi.reduce_dimension(dimension="t", reducer="mean").aggregate_spatial(geometries=spatial_extent, reducer="mean")
+    ndre_mean = ndre.reduce_dimension(dimension="t", reducer="mean").aggregate_spatial(geometries=spatial_extent, reducer="mean")
     
     # Execute job synchronously (takes a few seconds)
     try:
@@ -274,7 +274,9 @@ def _get_spectral_features(parcel: dict) -> List[float]:
     # 2. Try real Copernicus extraction
     if OPENEO_AVAILABLE:
         try:
+            log.info(f"Extracting Sentinel-2 data for {parcel['id']} (this takes 10-30s)...")
             feats = _extract_real_sentinel(parcel)
+            log.info(f"Success for {parcel['id']}")
             
             # Save to cache dynamically
             cache = {}
@@ -285,6 +287,7 @@ def _get_spectral_features(parcel: dict) -> List[float]:
             
             return feats
         except Exception as e:
+            log.warning(f"Fallback to simulation for {parcel['id']} due to error: {e}")
             pass # Fallthrough to simulation
 
     # 3. Fallback to simulation

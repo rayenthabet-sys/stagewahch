@@ -4,3 +4,5 @@ scikit-learn==1.6.1
 numpy==2.2.5
 shapely==2.1.0
 pydantic==2.11.4
+python-dotenv==1.0.1
+openeo==0.35.0

@@ -19,6 +19,9 @@ import json, math, random, logging, os
 from pathlib import Path
 from typing import List, Tuple
 
+from dotenv import load_dotenv
+load_dotenv()
+
 import numpy as np
 try:
     import openeo
@@ -179,15 +182,24 @@ def _get_openeo_connection():
             client_id = os.environ.get("OPENEO_CLIENT_ID")
             client_secret = os.environ.get("OPENEO_CLIENT_SECRET")
             
+            openeo_user = os.environ.get("OPENEO_USER")
+            openeo_pass = os.environ.get("OPENEO_PASS")
+            
             if client_id and client_secret:
                 log.info("Authenticating via Client Credentials...")
                 _openeo_connection.authenticate_oidc_client_credentials(
                     client_id=client_id,
                     client_secret=client_secret
                 )
+            elif openeo_user and openeo_pass:
+                log.info("Authenticating via Resource Owner Password (Email/Pass)...")
+                _openeo_connection.authenticate_oidc_resource_owner_password_credentials(
+                    username=openeo_user,
+                    password=openeo_pass,
+                    client_id="cdse-public" # Default public client for CDSE
+                )
             else:
-                log.warning("OPENEO_CLIENT_ID and OPENEO_CLIENT_SECRET not found in env.")
-                log.info("Falling back to interactive OIDC auth...")
+                log.warning("No OpenEO credentials found in env. Falling back to manual OIDC auth...")
                 _openeo_connection.authenticate_oidc()
                 
         except Exception as e:

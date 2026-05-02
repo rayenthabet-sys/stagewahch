@@ -474,13 +474,12 @@ def train_model():
     counts = {c: int((y == i).sum()) for i, c in enumerate(CLASS_NAMES)}
     log.info("Dataset — %s", counts)
 
-    # Use StratifiedKFold to prevent entire spatial groups from being held out
-    # given the extremely small dataset size (73 samples).
-    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    # Spatial cross-validation (StratifiedGroupKFold prevents spatial leakage)
+    cv = StratifiedGroupKFold(n_splits=5)
 
     # ── Geo model (live inference — no satellite data required) ──
     geo_clf = _build_clf()
-    geo_cv  = cross_val_score(geo_clf, X_geo, y,
+    geo_cv  = cross_val_score(geo_clf, X_geo, y, groups=groups,
                               cv=cv, scoring="f1_macro")
     geo_clf.fit(X_geo, y)
     geo_pred = geo_clf.predict(X_geo)
@@ -490,7 +489,7 @@ def train_model():
 
     # ── Full spectral model (demo with Sentinel-2 features) ──
     full_clf = _build_clf()
-    full_cv  = cross_val_score(full_clf, X_full, y,
+    full_cv  = cross_val_score(full_clf, X_full, y, groups=groups,
                                cv=cv, scoring="f1_macro")
     full_clf.fit(X_full, y)
     full_pred = full_clf.predict(X_full)

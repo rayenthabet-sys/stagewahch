@@ -7,7 +7,7 @@ Stage 1: Detection  — spatial query of EZZAYRA parcels inside drawn polygon
 Stage 2: Classification — 3-class model (extensif / intensif / hyper_intensif)
 """
 
-import json, logging, math, time, pickle
+import json, logging, math, time, pickle, os
 from pathlib import Path
 from typing import List, Optional
 
@@ -175,6 +175,7 @@ class CartographierResponse(BaseModel):
     latence_ms: int
     date:       Optional[str] = None
     zone_area_km2: Optional[float] = None
+    detection_source: str = "ezzayra_lookup"  # or "unet_inference"
 
 
 # ─── Routes ─────────────────────────────────────────────────────────────────
@@ -269,20 +270,51 @@ def cartographier(req: CartographierRequest):
     zone_area_km2 = round(zone_area_ha / 100, 1)
 
     detected = detect_parcels_in_zone(zone_coords, _all_parcels)
+    detection_source = "ezzayra_lookup"
 
     if not detected:
-        return CartographierResponse(
-            oliveraies=[],
-            stats=StatsResult(
-                total=0,
-                surface_totale_ha=0.0,
-                surface_moyenne_ha=0.0,
-                repartition={c: 0 for c in CLASS_NAMES},
-            ),
-            latence_ms=int((time.time() - t0) * 1000),
-            date=req.date,
-            zone_area_km2=zone_area_km2,
-        )
+        # ── Stage 1b: U-Net fallback on unknown zones ─────────────────────
+        if _unet is not None:
+            log.info("No EZZAYRA parcels found — running U-Net on unknown zone …")
+            try:
+                lats = [c["lat"] for c in zone_coords]
+                lngs = [c["lng"] for c in zone_coords]
+                zone_bbox = {
+                    "minLng": min(lngs), "minLat": min(lats),
+                    "maxLng": max(lngs), "maxLat": max(lats),
+                }
+                from unet_model import segment_zone
+                gee_project = os.environ.get("GEE_PROJECT")
+                new_polygons = segment_zone(zone_bbox, project=gee_project)
+                detected = [
+                    {
+                        "id":          f"unet_{i:03d}",
+                        "name":        f"Parcelle détectée {i + 1}",
+                        "coordinates": poly,
+                        "area_ha":     area_ha_shoelace(poly),
+                        "systeme":     None,
+                    }
+                    for i, poly in enumerate(new_polygons)
+                ]
+                detection_source = "unet_inference"
+                log.info("U-Net detected %d parcel(s) in the zone.", len(detected))
+            except Exception as exc:
+                log.warning("U-Net inference failed: %s", exc)
+
+        if not detected:
+            return CartographierResponse(
+                oliveraies=[],
+                stats=StatsResult(
+                    total=0,
+                    surface_totale_ha=0.0,
+                    surface_moyenne_ha=0.0,
+                    repartition={c: 0 for c in CLASS_NAMES},
+                ),
+                latence_ms=int((time.time() - t0) * 1000),
+                date=req.date,
+                zone_area_km2=zone_area_km2,
+                detection_source=detection_source,
+            )
 
     # ── Stage 2: Classification ───────────────────────────────────────────────
     results = []
@@ -319,8 +351,8 @@ def cartographier(req: CartographierRequest):
 
     latence_ms = int((time.time() - t0) * 1000)
     log.info(
-        "Zone %.1f km² — detected %d parcels, classified in %d ms",
-        zone_area_km2, len(results), latence_ms,
+        "Zone %.1f km² — detected %d parcels via %s, classified in %d ms",
+        zone_area_km2, len(results), detection_source, latence_ms,
     )
 
     return CartographierResponse(
@@ -334,6 +366,7 @@ def cartographier(req: CartographierRequest):
         latence_ms=latence_ms,
         date=req.date,
         zone_area_km2=zone_area_km2,
+        detection_source=detection_source,
     )
 
 

@@ -1,0 +1,1068 @@
+Sources de données : trois niveaux d'effort
+Toutes les sources listées sont 100 % gratuites et accessibles sans aucun moyen de paiement. Elles sont classées par niveau de friction administrative. Les sources Tier 3 demandent plus de démarches mais offrent un avantage compétitif réel — le jury valorise les équipes qui mobilisent ces ressources.
+
+T1
+Tier 1 — Zéro friction
+Aucune inscription. Accès immédiat à l'URL.
+T2
+Tier 2 — Inscription simple
+Email + mot de passe, parfois vérification SMS.
+T3
+Tier 3 — Effort récompensé
+Compte cloud, validation académique, formulaire.
+01
+Track · Vision satellite + Classification
+Cartographie intelligente des oliveraies tunisiennes
+Difficulté :
+  
+Élevée — pipeline en deux étages
+Énoncé métier
+Personne en Tunisie ne dispose d'une carte fine, actualisée et qualifiée des oliveraies. Les statistiques officielles agrégées par gouvernorat ne distinguent pas les systèmes de conduite, alors que les rendements et besoins en eau sont radicalement différents : 1-3 t/ha en extensif sec, 4-8 t/ha en intensif, 10-15 t/ha en hyper-intensif irrigué. Une carte qui détecte ET qualifie chaque oliveraie devient un actif stratégique inédit pour la planification logistique, le ciblage commercial AgriManager, l'allocation d'eau et la prévision de production nationale.
+
+Mission étudiant
+Construire un pipeline complet qui, à partir d'un périmètre dessiné sur une carte, détecte toutes les oliveraies présentes (segmentation Sentinel-2) puis classifie chacune en extensif / intensif / hyper-intensif (signature spectrale et texturale).
+
+Livrable attendu
+Une application web avec une carte Leaflet permettant de dessiner un polygone, une API REST qui exécute le pipeline complet (détection + classification), et un export GeoJSON téléchargeable des oliveraies annotées.
+
+Procédure de validation par le jury
+Démo en live · le jury teste l'app
+Le jour de la présentation, un membre du jury ouvre l'app et exécute le scénario suivant :
+
+1
+Le jury dessine un grand polygone sur la carte de Tunisie (zone au choix : 50 km² au Cap Bon, Sahel, Sfax, etc.)
+2
+Il clique sur "Analyser cette zone" → l'API exécute la détection puis la classification en arrière-plan
+3
+En quelques secondes, la carte affiche les oliveraies détectées colorées par système :
+🟢 vert = extensif   🟡 jaune = intensif   🔴 rouge = hyper-intensif
+4
+Tableau récapitulatif : nombre d'oliveraies détectées, surface totale, répartition par système, surface moyenne
+5
+Le jury peut télécharger un GeoJSON avec les polygones annotés pour vérifier dans QGIS
+Endpoint API attendu :
+
+POST /api/cartographier { "polygone_perimetre": <GeoJSON Polygon>, "date": "2026-06-15" } // Response { "oliveraies": [ { "polygone": <GeoJSON>, "systeme": "intensif", "confiance": 0.87, "surface_ha": 12.4 }, ... ], "stats": { "total_oliveraies": 47, "surface_totale_ha": 612.3, "repartition": { "extensif": 28, "intensif": 15, "hyper_intensif": 4 } } }
+Approche technique
+Pipeline en deux étages :
+
+[Étage 1 — Segmentation] Splitter les JSON oliviers EZZAYRA en train (70%) / val (15%) / test (15%) avec stratification spatiale par gouvernorat — ne jamais mélanger des polygones d'une même zone.
+[Étage 1] Pour chaque polygone, télécharger les bandes Sentinel-2 L2A (B2, B3, B4, B8, B11) sur la période mai-juin où le contraste olivier/sol est maximal. Filtrer les nuages avec la masque SCL.
+[Étage 1] Entraîner un U-Net avec backbone ResNet pré-entraîné (segmentation_models_pytorch). Loss = BCE + Dice combinées.
+[Étage 2 — Classification] Sur chaque polygone détecté, extraire features : NDVI moyen/max/min, amplitude saisonnière, NDWI, NDRE, densité de canopée (FAPAR/LAI).
+[Étage 2] Calculer features de texture GLCM sur les images haute saison — la régularité géométrique des hyper-intensifs en haies se voit nettement à 10 m.
+[Étage 2] Random Forest ou XGBoost multi-classe (E/I/HI). Validation par CV spatiale obligatoire.
+[Démo] FastAPI + frontend Leaflet avec outil de dessin de polygone (Leaflet.draw). Limiter la taille max du polygone (ex: 100 km²) pour la démo live.
+Sources de données
+T1
+JSON oliviers EZZAYRA + attribut système — vérité terrain
+Fourni dans le pack hackathon. Donnée introuvable ailleurs — c'est ce qui rend le sujet unique.
+
+Pack fourni
+T2
+Copernicus Data Space Ecosystem (Sentinel-2 L2A)
+Inscription par email seulement, pas de carte bancaire. 10 000 crédits openEO gratuits par mois.
+
+Accéder
+T3
+Google Earth Engine
+Compte Google + projet "noncommercial". Catalogue Sentinel + Landsat + MODIS unifié, exécution cloud.
+
+S'inscrire
+T3
+Planet NICFI — imagerie 4.7 m mensuelle
+Compte NICFI gratuit pour usage non-commercial / recherche. Permet la distinction fine des haies hyper-intensives.
+
+S'inscrire
+T1
+OpenStreetMap Overpass API
+Aucune inscription. Tag landuse=orchard pour candidats à l'inférence nationale.
+
+Accéder
+T1
+SoilGrids 250m
+Aucune inscription. Texture, pH, CEC. Features de contexte pour la classification.
+
+Accéder
+Critères jury spécifiques
+Évaluation sujet 01
+IoU ≥ 0.65 sur la détection (étage 1)
+F1 macro ≥ 0.70 sur la classification 3 classes (étage 2)
+Démo live fonctionnelle sur une zone non-vue à l'entraînement
+Matrice de confusion 3×3 affichée et commentée
+Validation spatiale appliquée (pas seulement aléatoire)
+Latence acceptable pour la démo (< 30 s sur polygone de 50 km²)
+Pièges à éviter
+Fuite de données spatiale : ne jamais mettre des polygones voisins dans train et test — l'autocorrélation spatiale gonfle artificiellement les scores.
+Confusion intensif/hyper-intensif : les deux peuvent avoir des NDVI similaires en pleine saison. Différencier par texture et amplitude saisonnière.
+Déséquilibre des classes : probablement plus d'extensifs que d'hyper-intensifs. Utiliser class_weight ou SMOTE.
+Période d'acquisition : en hiver, l'olivier ressemble spectralement à beaucoup d'autres cultures. Privilégier mai-juin.
+Démo trop lente : précalculer un cache des images Sentinel sur la zone démo pour répondre en quelques secondes.
+
+
+Sources premium · Tier 3
+L'effort de recherche, ça paie.
+Ces sources demandent plus de démarches administratives — création de compte cloud, formulaire de validation, génération de tokens. Mais elles offrent des données premium qui font une différence visible dans les résultats. Le jury distingue les équipes qui les mobilisent.
+
+AgERA5
+T3
+Météo agro réanalysée 0.1°, 40 ans, qualité supérieure. Variables agro horaires (ET₀, GDD, déficit hydrique).
+
+cds.climate.copernicus.eu
+Google Earth Engine
+T3
+Tout le catalogue Sentinel + Landsat + MODIS dans un seul environnement cloud, exécution serverless. Community tier gratuit, sans facturation.
+
+earthengine.google.com
+NASA Earthdata
+T3
+MODIS LST, Landsat 8/9 thermique, MODIS LAI/FAPAR. URS account + token. Indispensable pour le stress thermique.
+
+urs.earthdata.nasa.gov
+Planet NICFI
+T3
+Imagerie PlanetScope 4.7 m de résolution, mensuelle, gratuite pour usage non-commercial / recherche.
+
+planet.com/nicfi
+WaPOR FAO
+T3
+Productivité de l'eau Afrique/Moyen-Orient, calibré spécifiquement agriculture. Compte WaPOR + clé API.
+
+wapor.apps.fao.org
+Sentinel Hub Process API
+T2/T3
+Compte CDSE + génération OAuth client. Plus performant qu'OData pour des time series.
+
+docs.sentinel-hub.com
+Kaggle (datasets oliviers)
+T2
+Inscription email + vérification SMS. Versions augmentées des datasets oliviers de meilleure qualité.
+
+kaggle.com/datasets
+Microsoft Planetary Computer
+T3
+Catalogue Sentinel + Landsat + datasets globaux. Compte Microsoft + acceptation TOS.
+
+planetarycomputer.microsoft.com
+
+
+
+HACK THE HARVEST 2026
+Comprehensive
+Resource Guide
+HuggingFace models, GitHub repositories, Kaggle datasets, and
+integration tools for Sujets 02, 03, and 04.
+02 Yield Prediction - Tomato tonnage forecasting with NDVI, weather, and soil data
+03 Crop Stress Detection - Early anomaly detection on olive orchards via satellite
+monitoring
+04 Multimodal Voice AI - Conversational assistant in Darija with vision, RAG, and anti
+hallucination
+EZZAYRA ISI
+72-Hour Hackathon
+All resources are 100% free
+Generated by Z.ai
+May 2026
+Table of Contents
+2 Introduction
+2 Sujet 02: Yield Prediction - Tomato Tonnage Forecasting
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 2 HuggingFace Models
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 3 GitHub Repositories
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 4 Kaggle Datasets and Notebooks
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 5 Easy Integration Tools
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 6 Quick-Win Strategy for Sujet 02
+7 Sujet 03: Crop Stress Detection - Early Anomaly Detection on Olive Orchards
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 7 HuggingFace Models
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 8 GitHub Repositories
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 9 Kaggle Datasets and Notebooks
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 10 Easy Integration Tools
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 11 Quick-Win Strategy for Sujet 03
+12 Sujet 04: Multimodal Conversational AI - Voice Assistant in Darija
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 12 HuggingFace Models - ASR (Speech Recognition)
+ .  .  .  .  .  .  .  .  .  .  .  .  .  . 13 HuggingFace Models - Plant Disease, Embeddings, and TTS
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 14 GitHub Repositories
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 15 Kaggle Datasets and Notebooks
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 16 Easy Integration Tools
+ .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  .  . 17 Quick-Win Strategy for Sujet 04
+18 Free Deployment Options (No Docker, No Localhost)
+18 Recommended Unified Stack Summary
+Introduction
+This document provides a comprehensive resource pack for Hack The Harvest, an agricultural AI
+hackathon organized by EZZAYRA ISI. It covers three of the four tracks: Yield Prediction (Sujet 02),
+Crop Stress Detection (Sujet 03), and Multimodal Conversational AI (Sujet 04). For each track, we have
+curated the most relevant and easy-to-integrate resources from HuggingFace, GitHub, and Kaggle, along
+with essential free tools for rapid prototyping. All resources listed here are 100% free and compatible
+with a stack built on React JS, FastAPI, and open-source ML libraries.
+The resources are organized by category within each subject: HuggingFace models for pre-trained AI
+components, GitHub repositories for architecture references and code templates, Kaggle datasets for
+training data, and integration tools for the glue between components. Each resource includes a brief
+description, a direct URL, and an integration difficulty rating (Easy / Medium / Hard) to help you
+prioritize during the 72-hour hackathon window.
+Your existing stack (React JS + FastAPI, Groq Cloud / Gemini, FastEmbed + Supabase) is well-suited
+for all three subjects. The resources below have been specifically selected for compatibility with this
+stack and for minimizing learning curve so you can ship fast.
+Sujet 02: Yield Prediction - Tomato Tonnage
+Forecasting
+The goal of this track is to build a model that predicts the tonnage of a tomato plot using NDVI time
+series from Sentinel-2, weather data (Open-Meteo, NASA POWER), and soil features (SoilGrids). The
+deliverable is a REST API that returns predicted tonnage with confidence intervals and SHAP
+explanations. Spatial cross-validation is mandatory to avoid overfitting from spatial autocorrelation
+between neighboring plots.
+HuggingFace Models
+These pre-trained models can significantly reduce development time. The most valuable models for this
+track are tabular regression models (LightGBM, XGBoost) and satellite image classifiers. HuggingFace
+also hosts several agricultural benchmark datasets that can supplement the EZZAYRA data provided in
+the hackathon pack.
+Model / Dataset
+Description
+Difficulty
+CropNet Dataset
+Large-scale multi-modal dataset combining satellite imagery,
+weather, and soil data for crop yield prediction. Over 1M
+samples covering multiple crop types across diverse regions.
+Excellent for transfer learning or benchmarking your
+approach.
+Easy
+California Crop Yield
+Benchmark
+70+ crops with Landsat + climate + soil features. Provides
+R-squared scores of 0.76 as a baseline reference. The dataset
+structure closely mirrors what you need for tomato yield
+prediction in Tunisia.
+Easy
+MMST-ViT
+State-of-the-art multi-modal spatial-temporal Vision
+Transformer. Combines satellite time series with weather
+data in a unified transformer architecture. Research-grade but
+may be complex for a 72-hour hackathon.
+Hard
+SAT-Landforms-Classi
+fier
+Pre-trained satellite image classifier that can be fine-tuned for
+crop type identification from Sentinel-2 imagery. Useful as a
+feature extractor for your yield prediction pipeline.
+Medium
+Tabular Regression
+Models
+HuggingFace hosts 345+ tabular regression models. Search
+for "crop yield" or "tabular regression" to find LightGBM
+and XGBoost models pre-trained on agricultural data that
+you can fine-tune.
+Easy
+Table 1: HuggingFace models and datasets for yield prediction
+GitHub Repositories
+These repositories provide complete implementations and architectural references for crop yield
+prediction. Several repos directly combine NDVI time series with weather data, which is exactly the
+approach required for this track. Study the code structure, adapt the data pipelines, and reuse the model
+training scripts to accelerate your development.
+Repository Description Difficulty
+STAR FIND
+abhiwagh95/Crop-yield-prediction-using-weat
+her-data-and-NDVI-tim
+e-series
+Directly combines NDVI time series with weather
+parameters for yield prediction. Includes a ready-to-use
+Jupyter notebook with data collection, feature engineering,
+and model training. This is the closest architectural match to
+your project requirements.
+Easy
+CGIAR Crop Yield
+Pipeline
+CGIAR-ISA/yield-pred
+iction
+Combines Sentinel-2 imagery, TERRACLIM climate data,
+and ISRIC SoilGrids in a unified pipeline. Production-grade
+code with spatial cross-validation built in. An excellent
+reference for your feature engineering approach.
+Medium
+Smart Agriculture API
+agriculture-api
+Ready-made FastAPI template with yield prediction
+endpoints, input validation, and response formatting.
+Compatible with your FastAPI backend stack. Use it as a
+scaffolding template and add your model logic.
+Easy
+CropNet
+CropNet
+End-to-end crop classification and yield estimation
+framework using deep learning on satellite imagery. Provides
+data loaders, model architectures, and evaluation metrics.
+Good reference for a more complex deep learning approach.
+Medium
+Sen2Yield
+sen2yield
+Specialized pipeline for extracting Sentinel-2 derived
+features (NDVI, NDWI, EVI time series) and using them for
+yield prediction. Handles cloud masking and temporal
+interpolation automatically.
+Medium
+RicePAL
+RicePAL
+Sentinel-2 processing pipeline for paddy rice monitoring.
+While focused on rice, the satellite data processing patterns
+(NDVI extraction, time series construction, gap filling) are
+directly transferable to tomato crops.
+Medium
+Table 2: GitHub repositories for yield prediction
+Kaggle Datasets and Notebooks
+Kaggle provides both training datasets and competition-grade solution notebooks. The AgriYield 2025
+competition is particularly relevant as it uses the same data modalities (soil + weather + satellite).
+Studying winning notebooks from these competitions gives you proven feature engineering strategies
+and model architectures.
+Dataset / Notebook Description Difficulty
+AgriYield 2025
+Competition
+Active competition using soil + weather + satellite data for
+yield prediction. Exact data modality match. Study the
+winning solutions for proven feature engineering strategies
+and ensemble techniques.
+Easy
+Crop Yield Prediction
+Dataset
+Multi-year crop yield data with weather and soil features.
+Well-structured CSV format ready for LightGBM/XGBoost
+training. Includes both classification and regression labels.
+Easy
+India Crop Yield
+Dataset
+State-level crop production data with seasonal weather
+variables. Good for understanding how weather features
+correlate with yield. Use for pre-training or transfer learning.
+Easy
+Weather + Soil + Crop
+Dataset
+Comprehensive dataset combining meteorological
+observations, soil properties, and crop outcomes. Ideal for
+building a baseline model before fine-tuning on EZZAYRA
+data.
+Easy
+Tomato Crop Dataset
+(Tunisia)
+Tomato-specific agricultural dataset from Tunisian growing
+regions. May include yield, planting dates, and variety
+information. Check if available for direct use.
+Medium
+FutureCrop
+Competition
+Kaggle competition focused on future crop yield forecasting
+using climate projections. Advanced notebooks demonstrate
+temporal feature engineering and ensemble modeling.
+Medium
+Table 3: Kaggle datasets and notebooks for yield prediction
+Easy Integration Tools
+These free tools form the backbone of your yield prediction pipeline. Open-Meteo provides weather data
+without any API key, Remotior Sensus simplifies Sentinel-2 NDVI extraction, and Shapash delivers
+stunning SHAP visualizations that will impress the jury during your live demo.
+Tool Purpose Integration
+Open-Meteo API
+open-meteo.com
+Free weather API with no API key required.
+Provides 80+ years of historical data including
+temperature, precipitation, humidity, soil moisture,
+and evapotranspiration at 10km resolution. Essential
+for weather feature extraction.
+pip install openmeteo-requests
+Remotior Sensus
+remotior-sensus
+All-in-one Python library for Sentinel-2 data
+download and NDVI calculation. Install with pip and
+compute NDVI for any GeoJSON polygon in a few
+lines of code. Handles cloud masking automatically.
+pip install remotior-sensus
+LightGBM
+lightgbm
+Best gradient boosting library for tabular regression.
+Fast training, low memory usage, and excellent
+performance on structured data. sklearn-compatible
+API makes integration seamless with your existing
+code.
+pip install lightgbm
+Shapash
+shapash
+SHAP
+shap
+Interactive SHAP visualization library that creates
+beautiful dashboards for model explanations.
+Generates web-ready charts showing feature
+contributions. Will make your SHAP explanation
+demo stand out to the jury.
+Standard SHAP library for computing Shapley
+values. Works with LightGBM, XGBoost, and
+scikit-learn models. Provides force plots, summary
+plots, and dependence plots for model interpretation.
+pip install shapash
+pip install shap
+XGBoost
+xgboost
+Alternative gradient boosting library with strong
+performance on tabular data. Supports quantile
+regression for confidence interval estimation. Good
+backup or ensemble partner for LightGBM.
+pip install xgboost
+SoilGrids API
+soilgrids.org
+Free soil data at 250m resolution including texture,
+pH, CEC, and organic carbon. No registration
+required. Provides REST API access for
+programmatic soil feature extraction per polygon.
+Table 4: Integration tools for yield prediction
+Quick-Win Strategy for Sujet 02
+REST API (no key)
+For maximum impact in minimum time, follow this priority order. Start with Open-Meteo to pull
+weather features for each plot coordinate, use Remotior Sensus to extract NDVI time series from
+Sentinel-2, train a LightGBM model with the EZZAYRA tonnage data, and wrap everything in a
+FastAPI endpoint. For the SHAP explanation, use Shapash to generate interactive charts that the jury can
+explore during the demo. This pipeline can be assembled in under 8 hours, leaving time for spatial
+cross-validation and confidence interval calibration.
+• Step 1: Extract NDVI time series per plot using Remotior Sensus (2-3 hours)
+• Step 2: Pull weather data from Open-Meteo for each plot location (1 hour)
+• Step 3: Add soil features from SoilGrids API (30 minutes)
+• Step 4: Engineer phenological features by growth phase (1-2 hours)
+• Step 5: Train LightGBM with spatial K-fold cross-validation (1 hour)
+• Step 6: Add SHAP + Shapash explanations (1-2 hours)
+• Step 7: Wrap in FastAPI + React dashboard (2-3 hours)
+Sujet 03: Crop Stress Detection - Early Anomaly
+Detection on Olive Orchards
+This track requires building an anomaly detection system that monitors NDVI deviations from expected
+behavior for each olive orchard, accounting for seasonal patterns, weather conditions, and farming
+system type (extensive, intensive, hyper-intensive). The system must generate green/orange/red alerts
+and provide textual explanations for why a parcel is flagged. Key techniques include building a seasonal
+NDVI baseline with Prophet or Ridge regression, computing anomaly scores via sliding window
+z-scores, and visualizing results on an interactive Leaflet dashboard.
+HuggingFace Models
+For anomaly detection on satellite time series, the most relevant HuggingFace resources are geospatial
+foundation models that can be fine-tuned for change detection, time series anomaly detection tutorials
+using autoencoders, and plant disease classification models that complement the NDVI-based approach.
+The IBM-NASA Prithvi model is particularly noteworthy as a state-of-the-art foundation model for
+Earth Observation tasks.
+Model / Dataset Description Difficulty
+IBM-NASA
+Prithvi-EO-2.0
+Foundation model for Earth Observation trained on 4.2M
+global multi-temporal samples from NASA HLS data.
+Supports crop classification, land segmentation, and change
+detection. Apache-2.0 license. Fine-tunable for crop stress
+detection.
+Medium
+Prithvi Crop
+Classification
+Pre-trained Prithvi fine-tuned for crop vs. non-crop
+classification using multi-temporal HLS data and USDA
+CDL labels. Provides the backbone for identifying olive
+orchard boundaries from satellite time series.
+Medium
+Plant Disease
+MobileNetV2
+Lightweight, production-ready MobileNetV2 model trained
+on PlantVillage dataset for multi-class plant disease
+classification. Fast inference for edge deployment.
+Complements NDVI-based stress detection with leaf-level
+diagnostics.
+Easy
+Crop Leaf Diseases
+ViT
+Vision Transformer for smart agriculture disease
+identification in crop leaf images. Provides good accuracy for
+precision farming disease detection tasks and can identify
+specific olive diseases.
+Easy
+Autoencoder Anomaly
+Detection
+Keras tutorial using a convolutional autoencoder to detect
+anomalies in time series. Directly adaptable to NDVI
+anomaly detection: train on normal NDVI patterns, flag high
+reconstruction error as stress.
+Easy
+AGM_HS Plant Stress
+Dataset
+Hyperspectral dataset for plant stress detection and
+localization. Contains labeled stress events from multiple
+crops. Useful for training or validating stress detection
+classifiers.
+Easy
+Table 5: HuggingFace models for crop stress detection
+GitHub Repositories
+The repositories below cover NDVI anomaly detection pipelines, crop health monitoring dashboards,
+and olive-specific monitoring tools. The OpenFarm repository is the most directly relevant as it mirrors
+the exact project goals of monitoring crop health with satellite imagery and detecting anomalies. The
+Digital Earth Africa NDVI Anomalies repo provides a production-ready pipeline that computes NDVI
+z-scores and generates anomaly maps from Landsat and Sentinel-2 data.
+Repository Description Difficulty
+OpenFarm
+superzero11/OpenFarm
+Open intelligence for every farm. Monitors crop health with
+satellite imagery, detects anomalies early, and provides
+data-driven decisions. Architecture closely matches your
+project requirements. Study the full pipeline for reference.
+Medium
+Digital Earth Africa
+NDVI Anomalies
+digitalearthafrica/ndvi
+anomalies
+Production-ready NDVI anomaly pipeline using
+Landsat/Sentinel-2. Computes z-score deviations from
+historical mean. Negative values indicate stressed vegetation.
+Adaptable to olive orchards with minimal changes.
+Medium
+Olive Branch
+habberrih/Olive-branch
+Comprehensive olive tree disease identification,
+classification, and cultivation guidance. Olive-specific
+repository with disease detection models trained on olive
+imagery.
+Easy
+Olive Tree Health
+Classification
+ICAERUS-EU/Full-Pip
+eline-Olive-Tree-Healt
+h-Status-Classification
+End-to-end deep learning pipeline for olive tree health status
+classification. Combines object detection with health
+classification. Very relevant reference for olive-specific
+monitoring.
+Medium
+NDVI-Viewer
+(Streamlit)
+IndigoWizard/NDVI-V
+iewer
+Streamlit app for viewing and comparing NDVI values
+through time and location using Sentinel-2 imagery on the
+fly. Great starting point for your dashboard with interactive
+map and time series charts.
+Easy
+NDVI Auto Processing
+PhillRob/NDVI-auto-pr
+ocessing
+Calculates NDVI using Sentinel-2 data for any Area of
+Interest defined as a GeoJSON polygon. Core utility for
+computing NDVI per orchard polygon programmatically.
+Simple and well-documented.
+Easy
+Palm Farm Analytics
+astral-fate/palm-analyz
+er
+Predictive models for crop health with NDVI anomaly
+detection and real-time alerts for sudden NDVI drops. Uses
+Isolation Forest + Prophet for anomaly detection. Apply the
+same approach to olives.
+Medium
+Crop Anomaly
+Detection
+silexclouds/AnomalyD
+etection
+Extracts vegetation indices on fields to detect status, then
+predicts status using trained models. Clear pipeline: VI
+extraction followed by model training and anomaly
+prediction.
+Medium
+Table 6: GitHub repositories for crop stress detection
+Kaggle Datasets and Notebooks
+The Crop Health and Environmental Stress dataset is the best starting point with 212K records
+combining satellite, weather, and stress labels. The MODIS LST dataset includes land surface
+temperature alongside NDVI and EVI, which is exactly the feature combination needed for thermal
+stress detection. The Isolation Forest notebook provides a copy-paste template for time series anomaly
+detection that can be directly applied to NDVI series.
+Dataset / Notebook Description Difficulty
+Crop Health and
+Environmental Stress
+Dataset
+212,019 records from satellite imagery, UAV, weather
+stations, and field sensors across diverse environments.
+Directly combines satellite + weather + stress labels. Best
+starting dataset for training anomaly detection models.
+Easy
+JRC Agricultural
+Vegetation Anomalies
+EU JRC warnings about low/delayed vegetation performance
+at sub-national level. Official EU data that can validate your
+anomaly detection model predictions against real-world
+alerts.
+Easy
+Olive Leaf Image
+Dataset
+3,400 high-quality olive leaf images from Turkey. Designed
+for disease classification including Aculus Olearius and
+Peacock Spot. Olive-specific dataset for training disease
+classifiers.
+Easy
+MODIS LST and DEM
+(Marmara)
+NASA MODIS Land Surface Temperature + NDVI/EVI +
+elevation data. Contains the exact feature combination
+needed: LST for thermal stress, NDVI for vegetation health,
+and DEM for terrain context.
+Easy
+Drought Prediction
+Dataset
+Spatiotemporally balanced climate data for drought event
+prediction using standardized indices. Contains drought
+labels with climate features for training water stress
+detectors.
+Easy
+Time Series Anomaly
+Detection (Isolation
+Forest) Notebook
+Isolation Forest implementation for time series anomaly
+detection. Template notebook that can be directly applied to
+NDVI time series. Clean code with visualizations.
+Easy
+Anomaly Detection
+with Time Series
+Forecasting Notebook
+Detects anomalies by comparing forecast vs. actual values.
+Implements a forecast-based approach where deviations from
+predicted NDVI indicate stress events.
+Easy
+Table 7: Kaggle datasets and notebooks for crop stress detection
+Easy Integration Tools
+The anomaly detection toolkit centers on three complementary approaches: Isolation Forest for fast
+unsupervised detection, Prophet for building seasonal NDVI baselines, and ruptures for identifying the
+exact date when stress onset occurs. Combine these with Folium for the map dashboard and Open-Meteo
+for weather context to build a complete monitoring system.
+Tool Purpose Integration
+scikit-learn
+Isolation Forest
+Fastest unsupervised anomaly detection. Feed NDVI
++ weather features, get anomaly scores. Built into
+sklearn, no extra dependencies. Ideal for a quick
+baseline during the hackathon.
+pip install scikit-learn
+Prophet (Meta)
+Time series forecasting that handles seasonality and
+trends automatically. Build expected NDVI curves
+per orchard; deviations from forecast indicate
+anomalies. Robust to missing data and outliers.
+pip install prophet
+ruptures
+Python library for change point detection in time
+series. Supports PELT, Binary Segmentation,
+Window, and Kernel methods. Detect the exact date
+when NDVI starts dropping to identify stress onset.
+pip install ruptures
+Google Earth
+Engine API
+Free (non-commercial) access to Sentinel-2,
+MODIS, and Landsat via Python. Best option for
+NDVI extraction. Query data for your orchard
+polygons and compute time series in the cloud.
+pip install earthengine-api
+CHIRPS Rainfall
+Gold standard rainfall dataset at 0.05 degree
+resolution since 1981. Public domain with no
+registration. Essential for correlating rainfall deficits
+with NDVI drops to distinguish drought stress from
+other causes.
+API (no key needed)
+Folium
+Python library for Leaflet.js maps. Color orchard
+polygons by stress level (green, orange, red) with
+popups showing NDVI charts. Primary visualization
+tool for the jury demo dashboard.
+pip install folium
+Streamlit
+Free framework for data apps. Deploy a full
+dashboard with map, charts, and controls in under an
+hour. Alternative to your React frontend for rapid
+prototyping during the hackathon.
+pip install streamlit
+tslearn
+Machine learning for time series: clustering,
+classification, and dynamic time warping. Cluster
+orchards by similar NDVI patterns to detect outlier
+orchards that deviate from their peer group.
+pip install tslearn
+Table 8: Integration tools for crop stress detection
+Quick-Win Strategy for Sujet 03
+The fastest path to a working demo for this track is to build a Prophet-based NDVI baseline for each
+orchard, compute z-score deviations on a 3-week sliding window, and threshold into green/orange/red
+alerts. Visualize the results on a Folium map with colored polygons and popups. This approach avoids
+the complexity of deep learning and delivers a clean, interpretable result that the jury can understand and
+trust.
+• Step 1: Build NDVI baseline per orchard using Prophet (seasonal + weather features) (2 hours)
+• Step 2: Compute anomaly score = z-score of (observed - expected) on 3-week window (1 hour)
+• Step 3: Dynamic thresholding into green/orange/red using historical quantiles (1 hour)
+• Step 4: Build Folium dashboard with colored polygons and popups (2 hours)
+• Step 5: Add textual explanation module (1 hour)
+• Step 6: Wrap in FastAPI with POST /api/diagnostic-anomalie endpoint (1-2 hours)
+• Bonus: Add Isolation Forest for a second detection method and ensemble results
+Sujet 04: Multimodal Conversational AI - Voice
+Assistant in Darija
+This is the most technically ambitious track, requiring a full multimodal pipeline: ASR (Whisper for
+Tunisian Darija), CNN for leaf disease classification, RAG over agricultural PDFs (FAO, EPPO,
+CIHEAM), LLM response generation in Darija, and TTS for vocal output. The critical constraint is the
+anti-hallucination guard: the assistant must refuse to answer when the information is not in the corpus,
+with a 30-point penalty for any hallucination. Your existing stack (Groq/Gemini for LLM, FastEmbed +
+Supabase for RAG) is perfectly aligned with this track.
+HuggingFace Models - ASR (Speech Recognition)
+Several Whisper models have been fine-tuned specifically for Tunisian Arabic and Moroccan Darija,
+which are close enough for cross-dialect understanding. The ghayth123/tunisian-asr-whisper model is
+the best starting point as it was trained directly on Tunisian speech data. For faster inference, the Darija
+fine-tuned Whisper large-v3-turbo offers 4x speed improvement with minimal quality loss.
+Model
+Description
+ghayth123/tunisian-asr
+whisper
+Fine-tuned Whisper Small model specifically for Tunisian
+dialect ASR. Best match for your project. Trained on
+Tunisian Arabic speech data. Load directly from
+HuggingFace and use with the Whisper inference pipeline.
+Difficulty
+Easy
+ghayth123/tunisian-asr
+whisper_medium
+Whisper Medium variant for Tunisian Arabic ASR. Higher
+accuracy than the Small version, suitable if GPU is available
+for inference. Trade-off between speed and accuracy.
+anaszil/whisper-large-v
+3-turbo-darija
+Whisper large-v3-turbo fine-tuned on Darija. 4x faster than
+Whisper Large with excellent quality. Uses cleaned audio
+chunks up to 30 seconds. Best speed/quality balance for
+real-time use.
+Easy
+Easy
+TaloCreations/whisper
+darija-finetuned
+Whisper Small fine-tuned on Moroccan Darija. Darija
+dialects share significant vocabulary across the Maghreb
+region. Good fallback or complement to the Tunisian model.
+Easy
+ychafiqui/whisper-medi
+um-darija
+Whisper Medium fine-tuned on a Darija speech-to-text
+dataset. Another Darija option that may be combined with the
+Tunisian model for ensemble or A/B testing.
+Easy
+Table 9: HuggingFace ASR models for Darija/Tunisian Arabic
+HuggingFace Models - Plant Disease, Embeddings, and TTS
+For plant disease classification, load a pre-trained CNN from HuggingFace and fine-tune on the olive
+leaf dataset from Kaggle. For RAG embeddings, use the paraphrase-multilingual-MiniLM-L12-v2
+model which supports Arabic, French, and English and is compatible with FastEmbed. For TTS, the
+SILMA TTS v1 is the best open-source Arabic TTS, while edge-tts provides the simplest integration
+path with Microsoft voices.
+Model Description Difficulty
+Plant Disease Models
+(kero2111/Plant_Disea
+se, liriope/PlantDisease
+Detection)
+Pre-trained CNN classifiers on PlantVillage dataset. 38
+disease classes ready for inference. EfficientNetB4 variant
+offers state-of-the-art accuracy. Load and fine-tune on olive
+subset.
+Easy
+LLaVA Plant Leaf
+Diseases
+YuchengShi/LLaVA-v
+1.5-7B-Plant-Leaf-Dise
+ases-Detection
+Multimodal VLM fine-tuned to detect AND explain plant
+leaf diseases. Goes beyond classification to suggest
+treatment. Pairs well with RAG for comprehensive
+agricultural advice.
+Medium
+paraphrase-multilingual-MiniLM-L12-v2
+Multilingual embedding model supporting 50+ languages
+including Arabic and French. Compatible with FastEmbed.
+384-dimensional vectors. The go-to choice for RAG over
+multilingual agricultural corpus.
+Easy
+Arabic-MiniLM-L12-v
+2
+Omartificial-Intelligenc
+e-Space
+Arabic sentence embeddings fine-tuned on NLI triplets.
+384-dimensional vectors. Purpose-built for Arabic semantic
+search. Use if your corpus is predominantly Arabic.
+Easy
+SILMA TTS v1
+150M-parameter bilingual Arabic/English TTS based on
+F5-TTS. Ultra-low latency with instant voice cloning. Best
+open-source Arabic TTS available. Supports Tunisian dialect.
+Easy
+medmac01/xtt2_darija_
+v0.1
+XTT2 model fine-tuned specifically for Darija TTS. Directly
+addresses your Tunisian Darija use case. Produces
+natural-sounding speech in the target dialect.
+Easy
+Table 10: HuggingFace models for disease classification, embeddings, and TTS
+GitHub Repositories
+The most valuable repositories for this track combine RAG pipelines with voice interaction and plant
+disease diagnosis. The AgroAssist-Chatbot and multimodal-live-rag-voice repos are particularly relevant
+as they implement the exact architecture pattern you need: voice input, knowledge retrieval, and
+LLM-generated response. The Whisper and edge-tts repos provide the foundational ASR and TTS
+components.
+Repository Description Difficulty
+AgroAssist-Chatbot
+srushtin24/AgroAssist
+Chatbot
+RAG-based smart farming assistant with voice interaction,
+plant disease diagnosis, and actionable remedies. Most
+relevant repo: combines RAG + voice + disease diagnosis in
+one architecture.
+Easy
+multimodal-live-rag-vo
+ice
+sidhyaashu/multimodal-live-rag-voice
+React/TypeScript frontend + Python/FastAPI backend
+multimodal chatbot. Exact same stack as your project.
+Implements voice + RAG + multimodal input in a clean,
+production-ready architecture.
+Easy
+Krushak-Agri-Chat-Bot
+astronova001/Krushak
+Agri-Chat-Bot
+Agri chatbot using Gemini API with multi-language voice
+support and WhatsApp integration. Uses Gemini (your stack)
+with voice integration. Good reference for the Gemini +
+voice pipeline.
+Easy
+openai/whisper
+Official Whisper repository. Robust multilingual ASR. All
+Darija fine-tunes are built on this base model. Contains
+training, fine-tuning, and inference scripts.
+Easy
+openai-edge-tts
+travisvn/openai-edge-tt
+s
+Local OpenAI-compatible TTS API using edge-tts. Drop-in
+replacement for OpenAI TTS. Supports 74 languages and
+322 voices including Arabic (ar-TN, ar-MA, ar-EG, ar-SA).
+Easy
+Coqui TTS (XTTSv2)
+coqui-ai/TTS
+Deep learning TTS toolkit supporting 16 languages with
+voice cloning. XTTSv2 is the most capable open-source
+multilingual TTS. Arabic supported but heavier than edge-tts.
+Medium
+TunArTTS
+elyadata/TunArTTS
+Tunisian Dialect TTS dataset and preprocessing scripts.
+Tunisian-specific resource for training or fine-tuning TTS
+models on local dialect data.
+Medium
+PlantVillage Classifier
+CharlesWang185/plant
+village-disease-classifie
+r
+End-to-end CNN pipeline comparing ResNet-18 and
+EfficientNet-B0 on PlantVillage. Clean training code that can
+be directly reused and fine-tuned for olive diseases.
+Easy
+NVIDIA NeMo
+Guardrails
+NVIDIA-NeMo/Guardr
+ails
+Open-source toolkit for adding guardrails to LLMs. Built-in
+hallucination detection, fact-checking, and input/output
+moderation. Use the check_hallucination action for your
+anti-hallucination guard.
+Medium
+Awesome Arabic NLP
+h9-tec/Awesome_Arabi
+c_NLP
+Comprehensive curated list of Arabic NLP resources
+covering ASR, TTS, models, datasets, and tools. Master
+reference for finding any Arabic AI tool you might need.
+Easy
+Table 11: GitHub repositories for multimodal agricultural AI assistant
+Kaggle Datasets and Notebooks
+PlantVillage is the standard dataset for training plant disease classifiers, with 54K images across 38
+classes. The olive-specific datasets from Kaggle provide targeted training data for olive tree diseases.
+The top-scoring PlantVillage notebooks achieve 99.6% accuracy using CNN architectures, providing
+proven training recipes you can adapt.
+Dataset / Notebook Description Difficulty
+PlantVillage Dataset
+(abdallahalidev)
+54K images, 38 classes of diseased and healthy plant leaves.
+The standard dataset for CNN-based plant disease
+classification. Use as pre-training data before fine-tuning on
+olive-specific images.
+Easy
+Plant Village Dataset
+(Updated)
+70K high-quality images, 9 species, with proper train/val/test
+splits. Better organized than the original. Saves preprocessing
+time with ready-to-use data splits.
+Easy
+Olive Leaf Image
+Dataset
+3,400 olive leaf images from Turkey for Aculus Olearius and
+Peacock Spot classification vs. healthy leaves. Olive-specific
+dataset that directly trains on your target crop.
+Easy
+Olive Leaf Disease
+(Zeytin)
+Olive peacock eye leaf disease classification dataset from
+Turkey. Additional source for olive disease images to
+supplement the PlantVillage pre-training.
+Easy
+ResNet 99.2%
+Notebook
+Plant disease classification with ResNet50 achieving 99.2%
+accuracy on PlantVillage. Copy-paste-ready CNN training
+pipeline with data augmentation and transfer learning.
+Easy
+ResNet 99.6%
+Notebook
+Highest accuracy notebook on PlantVillage at 99.6%.
+Top-performing CNN architecture with detailed training
+configuration. Excellent training reference for maximizing
+model performance.
+Easy
+High-Quality Crop
+Disease Images
+Cleaned and deduplicated crop disease images from multiple
+sources. Higher quality than raw PlantVillage. Better for
+fine-tuning when you need clean, diverse training samples.
+Easy
+Cassava Leaf Disease
+Competition
+Kaggle competition for classifying cassava leaves into 4
+diseases plus healthy. Competition-grade solutions and
+notebooks provide advanced techniques applicable to olive
+disease classification.
+Medium
+Table 12: Kaggle datasets and notebooks for multimodal agricultural AI
+Easy Integration Tools
+The toolchain for this track is well-defined by your existing stack. edge-tts provides instant Arabic TTS,
+FastEmbed handles multilingual embeddings, PyMuPDF extracts text from agricultural PDFs, and
+LangChain orchestrates the RAG pipeline. The anti-hallucination guard can be implemented as a simple
+cosine similarity threshold between the LLM response and the retrieved context chunks.
+Tool Purpose Integration
+edge-tts
+Microsoft Edge TTS with 74 languages and 322
+voices. 100% free with no authentication. Arabic
+voices include ar-TN (Tunisian), ar-MA
+(Moroccan), ar-EG (Egyptian). Best free TTS option
+for rapid integration.
+pip install edge-tts
+FastEmbed
+Lightweight embedding library using ONNX
+Runtime. Already in your stack. Supports
+multilingual models including
+paraphrase-multilingual-MiniLM-L12-v2. Ideal for
+RAG over Arabic/French agricultural corpus.
+pip install fastembed
+PyMuPDF
+High-performance PDF text extraction. Extract text
+from FAO, EPPO, and CIHEAM PDFs for your
+RAG corpus. Handles complex layouts, tables, and
+images in PDFs.
+pip install pymupdf
+LangChain
+Most popular RAG framework. Document loading,
+text chunking, vector retrieval, and LLM generation
+in one pipeline. Integrates with FastEmbed,
+Supabase, Groq, and Gemini out of the box.
+pip install langchain
+FAISS
+Facebook vector similarity search library.
+In-memory, blazing fast, and requires no server
+setup. Perfect for hackathon demos. Works directly
+with FastEmbed output vectors.
+pip install faiss-cpu
+ChromaDB
+Open-source vector database with vector + full-text
++ metadata search. Embedded mode needs no server.
+Great for development and hackathon demos.
+pip install chromadb
+Groq Whisper
+API
+Ultra-fast Whisper inference via Groq Cloud.
+Already in your stack. Free tier available. Use for
+real-time ASR during the demo instead of running
+Whisper locally.
+Groq Cloud API
+NVIDIA NeMo
+Guardrails
+Anti-hallucination toolkit with built-in
+check_hallucination action for RAG systems.
+Validates LLM responses against retrieved context.
+Critical for avoiding the 30-point penalty.
+pip install nemoguardrails
+Table 13: Integration tools for multimodal conversational AI
+Quick-Win Strategy for Sujet 04
+For this complex track, prioritize the anti-hallucination guard and the end-to-end pipeline over perfect
+accuracy on each component. Start with edge-tts for instant Arabic TTS output, build the RAG pipeline
+with FastEmbed and your existing Supabase setup, use Groq Cloud Whisper API for ASR (fastest path),
+and implement a simple cosine similarity threshold as the anti-hallucination guard. Load a pre-trained
+PlantVillage CNN for the leaf disease classifier and fine-tune only if time permits.
+• Step 1: Set up edge-tts for Arabic TTS (30 minutes)
+• Step 2: Build RAG pipeline with FastEmbed + Supabase + agricultural PDFs (2-3 hours)
+• Step 3: Extract PDF text with PyMuPDF and chunk into 500-token segments (1 hour)
+• Step 4: Set up Whisper ASR via Groq Cloud API (1-2 hours)
+• Step 5: Load pre-trained PlantVillage CNN from HuggingFace (1 hour)
+• Step 6: Implement anti-hallucination guard (cosine similarity threshold) (1 hour)
+• Step 7: Integrate all components in FastAPI + React frontend (3-4 hours)
+• Step 8: Test anti-hallucination with 3+ out-of-corpus questions (1 hour)
+Free Deployment Options (No Docker, No Localhost)
+All three tracks require a production-accessible demo. Since you want to avoid Docker and localhost,
+here are the best free deployment platforms that work with your FastAPI + React stack. Each platform
+supports direct Git push deployment and provides a public URL within minutes.
+Platform
+Backend
+Frontend
+Notes
+Render
+Railway
+FastAPI/Flask
+(Python)
+FastAPI/Flask
+React (Static
+Site)
+React (static)
+Free tier with 750 hours/month. Auto-deploys
+from GitHub. Sleeps after 15 min inactivity on
+free tier. Best overall choice for hackathon
+demos.
+Free tier for static sites + serverless functions.
+Good for React frontend with lightweight API.
+Build and deploy from GitHub.
+Free trial with $5 credit. Auto-deploys from
+GitHub. Fast cold starts. Supports both backend
+and frontend in one project.
+Vercel
+PythonAnyw
+here
+Serverless
+Functions
+Flask/WSGI
+React
+(premium)
+N/A
+Excellent for React frontend. Free tier generous.
+Serverless functions for API routes. Cold start
+~1s. Best React hosting.
+Free tier for Python web apps. Limited to Flask
+with WSGI. Supports scheduled tasks. Good
+backup option for API-only deployment.
+Streamlit
+Cloud
+Netlify
+Streamlit
+Serverless
+Functions
+Built-in
+React
+Free hosting for Streamlit apps. Deploy with one
+click from GitHub. Perfect for rapid dashboards
+(Sujet 02 and 03). No custom backend.
+Table 14: Free deployment platforms for hackathon demos
+Recommended Unified Stack Summary
+The table below summarizes the recommended tool stack across all three tracks, highlighting which
+tools are shared versus track-specific. This unified view helps you identify reusable components if you
+decide to tackle multiple tracks or want to build a comprehensive agricultural platform.
+Component Sujet 02 (Yield) Sujet 03 (Stress) Sujet 04 (Voice AI)
+Backend FastAPI FastAPI FastAPI
+Frontend React + Leaflet React + Folium/Leaflet React (PWA)
+ML Model LightGBM / XGBoost Prophet + Isolation Forest Whisper + CNN + RAG
+Satellite Data Sentinel-2 (NDVI) Sentinel-2 (NDVI) N/A
+Weather Data Open-Meteo Open-Meteo + CHIRPS N/A
+Embeddings N/A N/A FastEmbed (multilingual)
+Vector Store N/A N/A Supabase / FAISS
+LLM N/A N/A Groq Cloud / Gemini
+ASR N/A N/A Whisper (Groq API)
+TTS N/A N/A edge-tts / SILMA TTS
+Explainability SHAP + Shapash Textual explanation Source citation + guard
+Deployment Render / Vercel Render / Streamlit Render / Vercel
+Table 15: Recommended unified stack across all three track

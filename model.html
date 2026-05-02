@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>Teachable Machine - Image Upload Mode</h2>
+    
+    <input type="file" id="image-selector" accept="image/*">
+    
+    <div id="image-container">
+        <img id="selected-image" width="300" style="display:none;" />
+    </div>
+
+    <div id="label-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <script type="text/javascript">
+        // Your Cloud Link
+        const URL = "https://teachablemachine.withgoogle.com/models/OxrRY4_kR/";
+
+        let model, labelContainer, maxPredictions;
+
+        // Load the model once on page load
+        async function loadModel() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+            
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+            console.log("Model Loaded!");
+        }
+
+        // Handle the Image Upload
+        document.getElementById('image-selector').addEventListener('change', function(event) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const img = document.getElementById('selected-image');
+                img.src = reader.result;
+                img.style.display = "block";
+                
+                // Wait for image to load in browser before predicting
+                img.onload = function() {
+                    predict(img);
+                };
+            }
+            reader.readAsDataURL(event.target.files[0]);
+        });
+
+        async function predict(imageElement) {
+            // Predict takes the <img> element directly
+            const prediction = await model.predict(imageElement);
+            
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+
+        // Initialize
+        loadModel();
+    </script>
+</body>
+</html>

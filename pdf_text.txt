@@ -1,0 +1,162 @@
+ Sources de données : trois niveaux d'effort
+Toutes les sources listées sont 100 % gratuites et accessibles sans aucun moyen de paiement. Elles
+sont classées par niveau de friction administrative. Les sources Tier 3 demandent plus de
+démarches mais offrent un avantage compétitif réel — le jury valorise les équipes qui mobilisent
+ces ressources.
+T1 Tier 1 — Zéro friction
+Aucune inscription.
+Accès immédiat à
+l'URL.
+T2 Tier 2 — Inscription
+simple
+Email + mot de passe,
+parfois vérification SMS.
+T3 Tier 3 — Effort
+récompensé
+Compte cloud,
+validation académique,
+formulaire.
+DOCUMENT DE RÉFÉRENCE — ÉDITION 2026
+Les 
+4 sujets détaillés
+de Hack The Harvest.
+Chaque sujet est présenté avec son énoncé métier, son livrable attendu, sa
+procédure de validation jury en live, l'approche technique étape par étape, les
+sources de données qualifiées par niveau d'effort, les critères d'évaluation
+spécifiques, et les pièges fréquents. Document à garder ouvert pendant les 72
+heures.
+5/2/26, 10:24 AM Sujets détaillés — Hack The Harvest · EZZAYRA × ISI
+https://multijoints.com/Hack/hackathon_isi_agri_sujets_detailles.html#sujet-1 1/19
+01
+TRACK · VISION SATELLITE + CLASSIFICATION
+Cartographie intelligente des oliveraies
+tunisiennes
+Difficulté : ⭐⭐ ⭐⭐ ⭐ Élevée — pipeline en deux étages
+ ÉNONCÉ MÉTIER
+Personne en Tunisie ne dispose d'une carte fine, actualisée et qualifiée des
+oliveraies. Les statistiques officielles agrégées par gouvernorat ne distinguent pas les
+systèmes de conduite, alors que les rendements et besoins en eau sont radicalement
+différents : 1-3 t/ha en extensif sec, 4-8 t/ha en intensif, 10-15 t/ha en hyper-intensif
+irrigué. Une carte qui détecte ET qualifie chaque oliveraie devient un actif
+stratégique inédit pour la planification logistique, le ciblage commercial
+AgriManager, l'allocation d'eau et la prévision de production nationale.
+ MISSION ÉTUDIANT
+Construire un pipeline complet qui, à partir d'un périmètre dessiné sur une
+carte, détecte toutes les oliveraies présentes (segmentation Sentinel-2) puis
+classifie chacune en extensif / intensif / hyper-intensif (signature spectrale et
+texturale).
+ LIVRABLE ATTENDU
+Une application web avec une carte Leaflet permettant de dessiner un polygone,
+une API REST qui exécute le pipeline complet (détection + classification), et un
+export GeoJSON téléchargeable des oliveraies annotées.
+ PROCÉDURE DE VALIDATION PAR LE JURY
+ DÉMO EN LIVE · LE JURY TESTE L'APP
+Le jour de la présentation, un membre du jury ouvre l'app et exécute le scénario
+suivant :
+5/2/26, 10:24 AM Sujets détaillés — Hack The Harvest · EZZAYRA × ISI
+https://multijoints.com/Hack/hackathon_isi_agri_sujets_detailles.html#sujet-1 2/19
+1 Le jury dessine un grand polygone sur la carte de Tunisie (zone au choix :
+50 km² au Cap Bon, Sahel, Sfax, etc.)
+2 Il clique sur "Analyser cette zone" →  l'API exécute la détection puis la
+classification en arrière-plan
+3 En quelques secondes, la carte affiche les oliveraies détectées colorées
+par système :
+🟢  vert = extensif   🟡  jaune = intensif   🔴  rouge = hyper-intensif
+4 Tableau récapitulatif : nombre d'oliveraies détectées, surface totale,
+répartition par système, surface moyenne
+5 Le jury peut télécharger un GeoJSON avec les polygones annotés pour
+vérifier dans QGIS
+Endpoint API attendu :
+POST /api/cartographier { "polygone_perimetre": <GeoJSON Polygon>, "date":
+"2026-06-15" } // Response { "oliveraies": [ { "polygone": <GeoJSON>,
+"systeme": "intensif", "confiance": 0.87, "surface_ha": 12.4 }, //. ],
+"stats": { "total_oliveraies": 47, "surface_totale_ha": 612.3,
+"repartition": { "extensif": 28, "intensif": 15, "hyper_intensif": 4 } } }
+ APPROCHE TECHNIQUE
+Pipeline en deux étages :
+[Étage 1 — Segmentation] Splitter les JSON oliviers EZZAYRA en train (70%) / val
+(15%) / test (15%) avec stratification spatiale par gouvernorat — ne jamais
+mélanger des polygones d'une même zone.
+1
+[Étage 1] Pour chaque polygone, télécharger les bandes Sentinel-2 L2A (B2, B3,
+B4, B8, B11) sur la période mai-juin où le contraste olivier/sol est maximal. Filtrer
+les nuages avec la masque SCL.
+2
+[Étage 1] Entraîner un U-Net avec backbone ResNet pré-entraîné
+(segmentation_models_pytorch). Loss = BCE + Dice combinées.
+3
+[Étage 2 — Classification] Sur chaque polygone détecté, extraire features : NDVI
+moyen/max/min, amplitude saisonnière, NDWI, NDRE, densité de canopée
+4
+5/2/26, 10:24 AM Sujets détaillés — Hack The Harvest · EZZAYRA × ISI
+https://multijoints.com/Hack/hackathon_isi_agri_sujets_detailles.html#sujet-1 3/19
+ SOURCES DE DONNÉES
+T1
+JSON oliviers EZZAYRA + attribut système — vérité
+terrain
+Fourni dans le pack hackathon. Donnée introuvable ailleurs —
+c'est ce qui rend le sujet unique.
+Pack fourni
+T2
+Copernicus Data Space Ecosystem (Sentinel-2 L2A)
+Inscription par email seulement, pas de carte bancaire. 10 000
+crédits openEO gratuits par mois.
+Accéder
+T3
+Google Earth Engine
+Compte Google + projet "noncommercial". Catalogue Sentinel +
+Landsat + MODIS unifié, exécution cloud.
+S'inscrire
+T3
+Planet NICFI — imagerie 4.7 m mensuelle
+Compte NICFI gratuit pour usage non-commercial / recherche.
+Permet la distinction fine des haies hyper-intensives.
+S'inscrire
+T1
+OpenStreetMap Overpass API
+Aucune inscription. Tag landuse=orchard  pour candidats à
+l'inférence nationale.
+Accéder
+T1
+SoilGrids 250m
+Accéder
+(FAPAR/LAI).
+[Étage 2] Calculer features de texture GLCM sur les images haute saison — la
+régularité géométrique des hyper-intensifs en haies se voit nettement à 10 m.
+5
+[Étage 2] Random Forest ou XGBoost multi-classe (E/I/HI). Validation par CV
+spatiale obligatoire.
+6
+[Démo] FastAPI + frontend Leaflet avec outil de dessin de polygone
+(Leaflet.draw). Limiter la taille max du polygone (ex: 100 km²) pour la démo live.
+7
+5/2/26, 10:24 AM Sujets détaillés — Hack The Harvest · EZZAYRA × ISI
+https://multijoints.com/Hack/hackathon_isi_agri_sujets_detailles.html#sujet-1 4/19
+Aucune inscription. Texture, pH, CEC. Features de contexte pour la
+classification.
+ CRITÈRES JURY SPÉCIFIQUES
+⚠ PIÈGES À ÉVITER
+Fuite de données spatiale : ne jamais mettre des polygones voisins dans train et
+test — l'autocorrélation spatiale gonfle artificiellement les scores.
+⚠
+Confusion intensif/hyper-intensif : les deux peuvent avoir des NDVI similaires en
+pleine saison. Différencier par texture et amplitude saisonnière.
+⚠
+Déséquilibre des classes : probablement plus d'extensifs que d'hyper-intensifs.
+Utiliser class_weight ou SMOTE.
+⚠
+Période d'acquisition : en hiver, l'olivier ressemble spectralement à beaucoup
+d'autres cultures. Privilégier mai-juin.
+⚠
+Démo trop lente : précalculer un cache des images Sentinel sur la zone démo pour
+répondre en quelques secondes.
+⚠
+ÉVALUATION SUJET 01
+IoU ≥  0.65 sur la détection (étage 1)✓
+F1 macro ≥  0.70 sur la classification 3 classes (étage 2)✓
+Démo live fonctionnelle sur une zone non-vue à l'entraînement✓
+Matrice de confusion 3×3 affichée et commentée✓
+Validation spatiale appliquée (pas seulement aléatoire)✓
+Latence acceptable pour la démo (< 30 s sur polygone de 50 km²)✓
+5/2/26, 10:24 AM Sujets détaillés — Hack The Harvest · EZZAYRA × ISI
+https://multijoints.com/Hack/hackathon_isi_agri_sujets_detailles.html#sujet-1 5/19

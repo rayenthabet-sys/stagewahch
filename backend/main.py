@@ -7,7 +7,7 @@ Stage 1: Detection  — spatial query of EZZAYRA parcels inside drawn polygon
 Stage 2: Classification — 3-class model (extensif / intensif / hyper_intensif)
 """
 
-import json, logging, math, time
+import json, logging, math, time, pickle
 from pathlib import Path
 from typing import List, Optional
 
@@ -19,8 +19,11 @@ from pydantic import BaseModel, Field
 
 from pipeline import (
     train_model, classify_parcel, detect_parcels_in_zone,
-    CLASS_NAMES, centroid, area_ha_shoelace
+    CLASS_NAMES, centroid, area_ha_shoelace, populate_cache_from_gee
 )
+
+MODEL_CACHE = Path(__file__).parent / "data" / "trained_model.pkl"
+UNET_WEIGHTS = Path(__file__).parent / "unet_olive.pth"
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -49,21 +52,52 @@ if FRONTEND.exists():
 _model      = None   # geo-only model (live inference)
 _full_model = None   # geo + spectral model (demo metric)
 _metrics    = None
+_unet       = None   # U-Net segmentation model (loaded once, reused)
 _all_parcels: List[dict] = []   # all EZZAYRA parcels (ext + int + HI)
 
 
 @app.on_event("startup")
 def startup():
-    global _model, _full_model, _metrics, _all_parcels
-    log.info("Training 3-class model on EZZAYRA dataset …")
+    global _model, _full_model, _metrics, _all_parcels, _unet
     t0 = time.time()
-    _model, _full_model, _metrics = train_model()
+
+    # ── Load or train the sklearn classifiers ─────────────────────────────
+    if MODEL_CACHE.exists():
+        log.info("Loading cached classifiers from %s …", MODEL_CACHE)
+        with open(MODEL_CACHE, "rb") as f:
+            _model, _full_model, _metrics = pickle.load(f)
+        log.info("Classifiers loaded in %.2f s (cached)", time.time() - t0)
+    else:
+        log.info("Training 3-class model on EZZAYRA dataset (first run) …")
+        _model, _full_model, _metrics = train_model()
+        MODEL_CACHE.parent.mkdir(parents=True, exist_ok=True)
+        with open(MODEL_CACHE, "wb") as f:
+            pickle.dump((_model, _full_model, _metrics), f)
+        log.info(
+            "Training done in %.2f s — model saved to cache. "
+            "Future startups will be instant.",
+            time.time() - t0,
+        )
     log.info(
-        "Model ready in %.2f s — CV F1-macro: %.3f (geo) / %.3f (full)",
-        time.time() - t0,
+        "CV F1-macro: %.3f (geo) / %.3f (full)",
         _metrics["geo_cv_f1_macro_mean"],
         _metrics["full_cv_f1_macro_mean"],
     )
+
+    # ── Load U-Net weights (if trained) ───────────────────────────────────
+    if UNET_WEIGHTS.exists():
+        try:
+            from unet_model import build_model
+            import torch
+            device = "cuda" if torch.cuda.is_available() else "cpu"
+            _unet = build_model().to(device)
+            _unet.load_state_dict(torch.load(UNET_WEIGHTS, map_location=device))
+            _unet.eval()
+            log.info("U-Net loaded from %s (device: %s) ✓", UNET_WEIGHTS, device)
+        except Exception as exc:
+            log.warning("Could not load U-Net: %s", exc)
+    else:
+        log.info("No U-Net weights found at %s — using EZZAYRA lookup.", UNET_WEIGHTS)
 
     # Pre-load EZZAYRA parcels (extensif + hyper_intensif ground truth)
     data_dir = Path(__file__).parent / "data"
@@ -77,6 +111,9 @@ def startup():
             p["systeme_label"] = systeme
             _all_parcels.append(p)
     log.info("Loaded %d EZZAYRA parcels", len(_all_parcels))
+
+    # GEE: batch-fetch ALL spectral data in one call, persist to cache
+    populate_cache_from_gee(_all_parcels)
 
 
 # ─── Schemas ────────────────────────────────────────────────────────────────

@@ -24,10 +24,10 @@ load_dotenv()
 
 import numpy as np
 try:
-    import openeo
-    OPENEO_AVAILABLE = True
+    import ee
+    GEE_AVAILABLE = True
 except ImportError:
-    OPENEO_AVAILABLE = False
+    GEE_AVAILABLE = False
 
 from sklearn.ensemble import GradientBoostingClassifier
 from sklearn.model_selection import StratifiedGroupKFold, cross_val_score
@@ -166,134 +166,153 @@ _SPECTRAL_RANGES = {
 }
 _rng = random.Random(42)
 
-# OpenEO Connection Cache
-_openeo_connection = None
+# ── GEE initialisation ────────────────────────────────────────
 CACHE_FILE = Path(__file__).parent / "data" / "sentinel_cache.json"
+_gee_initialised = False
 
-def _get_openeo_connection():
-    global _openeo_connection
-    if not OPENEO_AVAILABLE:
-        return None
-    if _openeo_connection is None:
-        try:
-            log.info("Connecting to Copernicus Data Space Ecosystem via OpenEO...")
-            _openeo_connection = openeo.connect("https://openeo.dataspace.copernicus.eu")
-            
-            client_id = os.environ.get("OPENEO_CLIENT_ID")
-            client_secret = os.environ.get("OPENEO_CLIENT_SECRET")
-            
-            openeo_user = os.environ.get("OPENEO_USER")
-            openeo_pass = os.environ.get("OPENEO_PASS")
-            
-            if client_id and client_secret:
-                log.info("Authenticating via Client Credentials...")
-                _openeo_connection.authenticate_oidc_client_credentials(
-                    client_id=client_id,
-                    client_secret=client_secret
-                )
-            elif openeo_user and openeo_pass:
-                log.info("Authenticating via Resource Owner Password (Email/Pass)...")
-                _openeo_connection.authenticate_oidc_resource_owner_password_credentials(
-                    username=openeo_user,
-                    password=openeo_pass,
-                    client_id="cdse-public" # Default public client for CDSE
-                )
-            else:
-                log.warning("No OpenEO credentials found in env. Falling back to manual OIDC auth...")
-                _openeo_connection.authenticate_oidc()
-                
-        except Exception as e:
-            log.warning(f"OpenEO Authentication failed or skipped: {e}. Falling back to simulation.")
-            return None
-    return _openeo_connection
-
-
-def _extract_real_sentinel(parcel: dict) -> List[float]:
-    """Extract real Sentinel-2 features using Copernicus CDSE OpenEO API."""
-    conn = _get_openeo_connection()
-    if not conn:
-        raise ConnectionError("No OpenEO connection available")
-
-    # Format geometry for OpenEO
-    coords = [[ [c["lng"], c["lat"]] for c in parcel["coordinates"] ]]
-    coords[0].append(coords[0][0]) # Close the polygon
-    spatial_extent = {"type": "Polygon", "coordinates": coords}
-
-    # Load May-June data (max contrast)
-    cube = conn.load_collection(
-        "SENTINEL2_L2A",
-        spatial_extent=spatial_extent,
-        temporal_extent=["2025-05-01", "2025-06-30"],
-        bands=["B03", "B04", "B05", "B08"] 
-    )
-    
-    # Calculate Indices
-    ndvi = (cube.band("B08") - cube.band("B04")) / (cube.band("B08") + cube.band("B04"))
-    ndwi = (cube.band("B03") - cube.band("B08")) / (cube.band("B03") + cube.band("B08"))
-    ndre = (cube.band("B08") - cube.band("B05")) / (cube.band("B08") + cube.band("B05"))
-
-    # Aggregate temporally (mean over the period) then spatially over the parcel
-    ndvi_mean = ndvi.reduce_dimension(dimension="t", reducer="mean").aggregate_spatial(geometries=spatial_extent, reducer="mean")
-    ndwi_mean = ndwi.reduce_dimension(dimension="t", reducer="mean").aggregate_spatial(geometries=spatial_extent, reducer="mean")
-    ndre_mean = ndre.reduce_dimension(dimension="t", reducer="mean").aggregate_spatial(geometries=spatial_extent, reducer="mean")
-    
-    # Execute job synchronously (takes a few seconds)
+def _init_gee() -> bool:
+    """Initialise GEE once using service-account key or application-default."""
+    global _gee_initialised
+    if _gee_initialised:
+        return True
+    if not GEE_AVAILABLE:
+        return False
     try:
-        ndvi_res = ndvi_mean.execute()
-        ndwi_res = ndwi_mean.execute()
-        ndre_res = ndre_mean.execute()
-        
-        # Extract scalar values from the resulting JSON/NetCDF structure
-        v_ndvi = float(np.mean(ndvi_res)) if np.any(ndvi_res) else 0.0
-        v_ndwi = float(np.mean(ndwi_res)) if np.any(ndwi_res) else 0.0
-        v_ndre = float(np.mean(ndre_res)) if np.any(ndre_res) else 0.0
-        
-        # We simulate amplitude, canopy cover, and glcm for now as they require complex temporal/spatial reducers
-        sys = parcel.get("systeme", "extensif")
-        amp = _rng.uniform(*_SPECTRAL_RANGES[sys][1])
-        cc  = _rng.uniform(*_SPECTRAL_RANGES[sys][4])
-        glcm= _rng.uniform(*_SPECTRAL_RANGES[sys][5])
+        sa_key = os.environ.get("GEE_SERVICE_ACCOUNT_KEY")  # path to JSON key file
+        sa_email = os.environ.get("GEE_SERVICE_ACCOUNT")     # service account email
+        if sa_key and sa_email:
+            credentials = ee.ServiceAccountCredentials(sa_email, sa_key)
+            ee.Initialize(credentials)
+        else:
+            # Falls back to `earthengine authenticate` token (~/.config/earthengine)
+            ee.Initialize(project=os.environ.get("GEE_PROJECT"))
+        _gee_initialised = True
+        log.info("Google Earth Engine initialised ✓")
+        return True
+    except Exception as exc:
+        log.warning(f"GEE init failed: {exc} — falling back to simulation")
+        return False
 
-        return [v_ndvi, amp, v_ndwi, v_ndre, cc, glcm]
-    except Exception as e:
-        log.error(f"OpenEO job failed for parcel {parcel['id']}: {e}")
-        raise
+
+def _parcels_to_fc(parcels: List[dict]) -> "ee.FeatureCollection":
+    """Convert a list of parcel dicts to an ee.FeatureCollection."""
+    features = []
+    for p in parcels:
+        ring = [[c["lng"], c["lat"]] for c in p["coordinates"]]
+        ring.append(ring[0])  # close
+        geom = ee.Geometry.Polygon(ring)
+        features.append(ee.Feature(geom, {"parcel_id": p["id"]}))
+    return ee.FeatureCollection(features)
+
+
+def batch_extract_gee(parcels: List[dict]) -> dict:
+    """
+    Extract NDVI, NDWI, NDRE for ALL parcels in a SINGLE GEE server-side call.
+    Returns  {parcel_id: [ndvi, ndwi, ndre], ...}
+    """
+    if not _init_gee():
+        return {}
+
+    try:
+        fc = _parcels_to_fc(parcels)
+
+        # Sentinel-2 SR, cloud-masked composite May–Jun 2025
+        s2 = (
+            ee.ImageCollection("COPERNICUS/S2_SR_HARMONIZED")
+            .filterDate("2025-05-01", "2025-06-30")
+            .filterBounds(fc)
+            .filter(ee.Filter.lt("CLOUDY_PIXEL_PERCENTAGE", 20))
+            .select(["B3", "B4", "B5", "B8"])
+            .median()  # cloud-free median composite
+        )
+
+        # Compute indices (scaled ÷ 10000 for SR reflectance)
+        b3 = s2.select("B3").divide(10000)
+        b4 = s2.select("B4").divide(10000)
+        b5 = s2.select("B5").divide(10000)
+        b8 = s2.select("B8").divide(10000)
+
+        ndvi = b8.subtract(b4).divide(b8.add(b4)).rename("ndvi")
+        ndwi = b3.subtract(b8).divide(b3.add(b8)).rename("ndwi")
+        ndre = b8.subtract(b5).divide(b8.add(b5)).rename("ndre")
+
+        indices = ndvi.addBands(ndwi).addBands(ndre)
+
+        # Single batch reduceRegions — all parcels at once (server-side)
+        reduced = indices.reduceRegions(
+            collection=fc,
+            reducer=ee.Reducer.mean(),
+            scale=10,  # Sentinel-2 10 m bands
+        )
+
+        # Pull results to client
+        result_list = reduced.toList(reduced.size()).getInfo()
+        out = {}
+        for feat in result_list:
+            pid   = feat["properties"].get("parcel_id")
+            ndvi_ = feat["properties"].get("ndvi") or 0.0
+            ndwi_ = feat["properties"].get("ndwi") or 0.0
+            ndre_ = feat["properties"].get("ndre") or 0.0
+            out[pid] = [float(ndvi_), float(ndwi_), float(ndre_)]
+
+        log.info("GEE batch extraction: %d parcels processed ✓", len(out))
+        return out
+
+    except Exception as exc:
+        log.warning(f"GEE batch extraction failed: {exc}")
+        return {}
 
 
 def _get_spectral_features(parcel: dict) -> List[float]:
     """
-    Get spectral features: Try Cache -> Try OpenEO -> Fallback to Simulation.
+    Get spectral features for a single parcel.
+    Reads from cache (populated by batch_extract_gee at startup).
+    Falls back to simulation if GEE is unavailable.
     """
-    # 1. Check local cache (CRITICAL to avoid 30min startup time)
+    # Check cache
     if CACHE_FILE.exists():
         with open(CACHE_FILE) as f:
             cache = json.load(f)
-            if parcel["id"] in cache:
-                return cache[parcel["id"]]
-    
-    # 2. Try real Copernicus extraction
-    if OPENEO_AVAILABLE:
-        try:
-            log.info(f"Extracting Sentinel-2 data for {parcel['id']} (this takes 10-30s)...")
-            feats = _extract_real_sentinel(parcel)
-            log.info(f"Success for {parcel['id']}")
-            
-            # Save to cache dynamically
-            cache = {}
-            if CACHE_FILE.exists():
-                with open(CACHE_FILE) as f: cache = json.load(f)
-            cache[parcel["id"]] = feats
-            with open(CACHE_FILE, "w") as f: json.dump(cache, f)
-            
-            return feats
-        except Exception as e:
-            log.warning(f"Fallback to simulation for {parcel['id']} due to error: {e}")
-            pass # Fallthrough to simulation
+        if parcel["id"] in cache:
+            return cache[parcel["id"]]
 
-    # 3. Fallback to simulation
+    # Fallback: simulation from literature ranges
     systeme = parcel.get("systeme", "extensif")
-    ranges = _SPECTRAL_RANGES[systeme]
+    ranges  = _SPECTRAL_RANGES[systeme]
     return [_rng.uniform(lo, hi) for lo, hi in ranges]
+
+
+def populate_cache_from_gee(parcels: List[dict]) -> None:
+    """
+    Call once at startup: batch-fetch GEE spectral data for all parcels
+    and persist to CACHE_FILE so _get_spectral_features() is instant.
+    """
+    log.info("GEE: batch-fetching spectral data for %d parcels …", len(parcels))
+    gee_results = batch_extract_gee(parcels)
+    if not gee_results:
+        log.warning("GEE returned no data — spectral features will be simulated")
+        return
+
+    # Load existing cache
+    cache: dict = {}
+    if CACHE_FILE.exists():
+        with open(CACHE_FILE) as f:
+            cache = json.load(f)
+
+    for p in parcels:
+        pid = p["id"]
+        if pid not in cache and pid in gee_results:
+            ndvi, ndwi, ndre = gee_results[pid]
+            sys_ = p.get("systeme", "extensif")
+            amp  = _rng.uniform(*_SPECTRAL_RANGES[sys_][1])
+            cc   = _rng.uniform(*_SPECTRAL_RANGES[sys_][4])
+            glcm = _rng.uniform(*_SPECTRAL_RANGES[sys_][5])
+            cache[pid] = [ndvi, amp, ndwi, ndre, cc, glcm]
+
+    CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    with open(CACHE_FILE, "w") as f:
+        json.dump(cache, f, indent=2)
+    log.info("Cache saved → %s (%d entries)", CACHE_FILE, len(cache))
 
 
 def full_features(parcel: dict) -> np.ndarray:
